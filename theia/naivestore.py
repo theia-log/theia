@@ -75,7 +75,34 @@ class MemoryFile:
       self.lock.release()
 
 
-DataFile = namedtuple('DataFile', ['path','from','to'])
+DataFile = namedtuple('DataFile', ['path','start','end'])
+
+def binary_search(datafiles, ts):
+  start = 0
+  end = len(datafiles)-1
+  if not len(datafiles):
+    return None
+  if datafiles[0].start > ts or datafiles[-1].end < ts:
+    return None
+  
+  while True:
+    mid = (end+start)//2
+    #print(start, end, mid)
+    if datafiles[mid].end >= ts:
+      #print('end=mid')
+      end = mid
+    else:
+      start = mid
+      #print('start=mid')
+    if end - start <= 1:
+      if ts > datafiles[start].end and ts < datafiles[end].start:
+        return None
+      if datafiles[start].end >= ts:
+        return start
+      else:
+        return end
+  return None
+
 
 class FileIndex:
   def __init__(self, root_dir):
@@ -85,11 +112,11 @@ class FileIndex:
     files = []
     
     for fn in listdir(root_dir):
-      
+      pass
     
     return files
   
-  def find(self, ts):
+  def find(self, ts_from, ts_to):
     pass
   
   def add_file(self, fname):

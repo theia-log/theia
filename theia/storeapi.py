@@ -1,4 +1,4 @@
-from abs import abstractmethod
+from abc import abstractmethod
 
 class EventStore:
   """EventStore is the basic interface for interaction with the events.
