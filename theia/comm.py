@@ -1,46 +1,51 @@
 """
-client API
-server API
+Client
+------
+ - Can connect to a server (two-way channel)
+
+Server
+-----
+ - Can handle multiple connections from clients
+ - Can route actions
 """
 
 from theia.model import EventSerializer
+import websockets
 
-
-class CommEndpoints:
-  def __init__(self, hostname, port=3500, secure=True):
-    pass
-  
-  def add_port(self, name, porturl):
-    pass
-  
-  def close_port(self, port):
-    pass
-  
-  def send(self, port, data):
-    pass
-  
-  def receive(self, port, callback, path_pattern):
-    pass
-  
-  def on_command(self, command, callback):
-    pass
-  
-  def reply(self, command_id, data):
-    pass
 
 class Client:
-  def __init__(self, id, srv_url, hostname, port=3500):
-    self.id = id
+
+  def __init__(self, loop, host, port, secure=False, path=None, recv=None):
+    self.loop = loop
+    self.host = host
+    self.port = port
+    self.secure = secure
+    self.path = path
+    self.recv_handler = recv
     self.serializer = EventSerializer()
-    self.endpoints = CommEndpoints(hostname, port)
-    self.endpoints.add_port('server', srv_url)
-  
-  def send_event(self, event):
-    self.endpoints.send('server', self.serializer.serialize(event))
-  
-  def _on_command(self, command):
-    pass
-    
+    self.websocket = None
 
+  async def _open_websocket(self):
+    websocket = websockets.connect(self._get_ws_url())
+    self.websocket = websocket
 
+  def connect(self):
+    self.loop.run_until_complete(self._open_websocket())
 
+  def _get_ws_url(self):
+    url = 'wss://' if self.secure else 'ws://'
+    url += self.host
+    if self.port:
+      url += str(self.port)
+    if self.path:
+      if self.path.startswith('/'):
+        url += self.path
+      else:
+        url += '/' + self.path
+    return url
+
+  def send(self, message):
+    return self.loop.call_soon_threadsafe(self._send, message)
+
+  async def _send(self, message):
+    await self.websocket.send(self.serializer.serialize(message))
