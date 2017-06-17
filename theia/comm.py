@@ -11,7 +11,7 @@ Server
 
 from theia.model import EventSerializer
 import websockets
-
+import asyncio
 
 class Client:
 
@@ -26,26 +26,30 @@ class Client:
     self.websocket = None
 
   async def _open_websocket(self):
-    websocket = websockets.connect(self._get_ws_url())
+    websocket = await websockets.connect(self._get_ws_url(), loop=self.loop)
     self.websocket = websocket
 
   def connect(self):
     self.loop.run_until_complete(self._open_websocket())
+    print('Connected ?')
 
   def _get_ws_url(self):
     url = 'wss://' if self.secure else 'ws://'
     url += self.host
     if self.port:
-      url += str(self.port)
+      url += ':' + str(self.port)
     if self.path:
       if self.path.startswith('/'):
         url += self.path
       else:
         url += '/' + self.path
+    print('URL: %s' %url)
     return url
 
   def send(self, message):
-    return self.loop.call_soon_threadsafe(self._send, message)
-
-  async def _send(self, message):
-    await self.websocket.send(self.serializer.serialize(message))
+    return asyncio.run_coroutine_threadsafe(self.websocket.send(self.serializer.serialize(message)), self.loop)
+    
+  def _send(self, message):
+    print('scheduling to send')
+    
+    print('scheduled to send')

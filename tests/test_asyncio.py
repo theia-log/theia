@@ -12,11 +12,8 @@ async def routine(id, n):
   await routine0(id, n)
 
 loop = asyncio.get_event_loop()
-tasks = [
-  asyncio.ensure_future(routine('a',5)),
-  asyncio.ensure_future(routine('b',8))]
-print('muf')
-loop.run_until_complete(asyncio.wait(tasks))
-print('puf')
-loop.close()
+
+asyncio.run_coroutine_threadsafe(routine('aa', 3), loop)
+
+loop.run_forever()
 
