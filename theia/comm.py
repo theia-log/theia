@@ -24,6 +24,7 @@ class Client:
     self.recv_handler = recv
     self.serializer = EventSerializer()
     self.websocket = None
+    self._is_open = False
 
   async def _open_websocket(self):
     websocket = await websockets.connect(self._get_ws_url(), loop=self.loop)
@@ -31,7 +32,10 @@ class Client:
 
   def connect(self):
     self.loop.run_until_complete(self._open_websocket())
-    print('Connected ?')
+    self._is_open = True
+  
+  def close(self):
+    self._is_open = False
 
   def _get_ws_url(self):
     url = 'wss://' if self.secure else 'ws://'
@@ -46,10 +50,23 @@ class Client:
     print('URL: %s' %url)
     return url
 
-  def send(self, message):
-    return asyncio.run_coroutine_threadsafe(self.websocket.send(self.serializer.serialize(message)), self.loop)
-    
-  def _send(self, message):
-    print('scheduling to send')
-    
-    print('scheduled to send')
+  def send(self, event):
+    return asyncio.run_coroutine_threadsafe(self.websocket.send(message), self.loop)
+  
+  def send_event(self, event):
+    message = self.serializer.serialize(message)
+    return self.send(message)
+
+class Server:
+  
+  def __init__(self, host='localhost', port=4479):
+    self.host = host
+    self.port = port
+  
+  def start(self):
+    pass
+  
+  def stop(self):
+    pass
+
+
