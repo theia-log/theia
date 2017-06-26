@@ -4,12 +4,13 @@ import asyncio
 import websockets
 
 async def hello(websocket, path):
-    name = await websocket.recv()
-    print("< {}".format(name))
+    while True:
+      name = await websocket.recv()
+      print("< {}".format(name))
 
-    greeting = "Hello {}!".format(name)
-    await websocket.send(greeting)
-    print("> {}".format(greeting))
+      greeting = "Hello {}!".format(name)
+      await websocket.send(greeting)
+      print("> {}".format(greeting))
 
 start_server = websockets.serve(hello, 'localhost', 8765)
 
