@@ -15,7 +15,7 @@ print('1')
 def recv(msg):
   print('RECEIVED: ', msg)
 
-cl = Client(loop, host='localhost', port=8765,path='/pajo', recv=recv)
+cl = Client(loop, host='localhost', port=8765,path='/event', recv=recv)
 cl.connect()
 print('2: cl.websocket.open: ' + str(cl.websocket.open))
 

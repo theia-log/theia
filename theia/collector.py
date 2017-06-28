@@ -1,7 +1,7 @@
 from theia.comm import Server
 from theia.model import EventParser
 import asyncio
-from threaing import Thread
+from threading import Thread
 from io import BytesIO
 
 
@@ -10,6 +10,8 @@ from io import BytesIO
 class Collector:
 
   def __init__(self, store, hostname='0.0.0.0', port=4300):
+    self.hostname=hostname
+    self.port=port
     self.server = None
     self.store = store
     self.server_thread = None
@@ -17,8 +19,8 @@ class Collector:
     self.store_loop = None
     self.parser = EventParser()
     
-    self._setup_store()
-    self._setup_server()
+    #self._setup_store()
+    #self._setup_server()
     
   def run(self):
     self._setup_store()
@@ -41,7 +43,7 @@ class Collector:
   def _setup_server(self):
     def run_in_server_thread():
       loop = asyncio.new_event_loop()
-      self.server = Server(loop=loop, host=self.hostname port=self.port)
+      self.server = Server(loop=loop, host=self.hostname, port=self.port)
       self.server.on_action('/event', self._on_event)
       self.server.start()
       loop.run_forever()
@@ -50,6 +52,7 @@ class Collector:
     self.server_thread.start()
   
   def _on_event(self, path, message, websocket, resp):
+    print('_on_event:', message)
     try:
       self.store_loop.call_soon_threadsafe(self._store_event, message)
     except Exception as e:
@@ -57,5 +60,6 @@ class Collector:
   
   def _store_event(self, message):
     event = self.parser.parse_event(BytesIO(message.encode('utf-8')))
+    print('Event: %s' % event)
     self.store.save(event)
       

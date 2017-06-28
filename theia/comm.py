@@ -106,11 +106,11 @@ class Server:
       self._remove_websocket(websocket)
 
   def _remove_websocket(self, websocket):
-    self.websocket.remove(websocket)
+    self.websockets.remove(websocket)
 
   async def _process_req(self, path, message, websocket):
     resp = ''
-    for reg_path, actions in self.actions:
+    for reg_path, actions in self.actions.items():
       if reg_path == path:
         try:
           for action in actions:
@@ -122,7 +122,7 @@ class Server:
 
   def start(self):
     start_server = websockets.serve(self._on_client_connection, self.host, self.port)
-    asyncio.run_until_complete(start_server, loop=self.loop)
+    self.loop.run_until_complete(start_server)
     self._started = True
 
   def stop(self):

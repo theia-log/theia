@@ -106,24 +106,54 @@ def binary_search(datafiles, ts):
 
 class FileIndex:
   def __init__(self, root_dir):
-    pass
+    self.root = root_dir
+    self.files = self._load_files(root_dir)
   
   def _load_files(self, root_dir):
     files = []
     
     for fn in listdir(root_dir):
-      pass
-    
+      df = self._load_data_file(fn)
+      if df:
+        files.append(df)
+
+    files = sorted(files, key=lambda n: n.start)
+    print('Loaded %d files to index.'%len(files))
+    if len(files):
+      print('Spanning from %d to %d' % (files[0].start, files[-1].end))
     return files
   
+  def _load_data_file(self, fname):
+    if re.match('\d+-\d+', fname):
+      start,_,end = fname.partition('-')
+      start,end = int(start),int(end)
+      return DataFile(path=join_paths(self.root, fname), start=start, end=end)
+    return None
+
   def find(self, ts_from, ts_to):
-    pass
+    idx = binary_search(self.files, ts_from)
+    if idx is not None:
+      found = []
+      while idx < len(self.files):
+        df = self.files[idx]
+        if df.start <= ts_from:
+          found.append(df)
+        if df.end > ts_to:
+          break
+      return found
+    return None
   
   def add_file(self, fname):
-    pass
+    df = self._load_data_file(fname)
+    if df:
+      self.files.append(df)
+      self.files = sorted(files, key=lambda n: n.start)
 
 
 class NaiveEventStore(EventStore):
 
   def __init__(self, root_dir):
     self.root_dir = root_dir
+    self.index = FileIndex(root_dir)
+    self.open_files = {}
+
