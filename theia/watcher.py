@@ -3,6 +3,9 @@ from watchdog.events import FileSystemEventHandler
 
 from os.path import getsize, isfile, isdir, split as splitpath, realpath
 from time import time, sleep
+from uuid import uuid4
+
+from theia.model import Event
 
 
 class FileSource:
@@ -88,11 +91,9 @@ class SourcesDaemon:
   def add_source(self, fpath, enc='UTF-8', tags=None):
     def callback(diff, srcpath, evtags):
       ts = time()
-      print('EVENT')
-      print('TIME:', ts)
-      print('TAGS:', self.tags, evtags)
-      print('SRC:', srcpath)
-      print(diff)
+      ev = Event(id=str(uuid4()), source=fpath, timestamp=ts, tags=evtags, content=diff)
+      self.client.send_event(ev)
+      
     fsrc = FileSource(fpath, callback, enc, tags)
     pdir, fname = self._split_path(fpath)
     files = self.sources.get(pdir)
