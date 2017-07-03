@@ -23,22 +23,34 @@ from collections import namedtuple
 import re
 
 from theia.storeapi import EventStore
-from theis.model import EventSerializer
+from theis.model import EventSerializer, EventParser, EOFException, Event
 
 
 class SequentialEventReader:
 
-  def __init__(self, stream):
-    pass
+  def __init__(self, stream, event_parser):
+    self.stream = stream
+    self.parser = event_parser
 
   def events(self):
-    pass
+    while True:
+      try:
+        yield self.parser.parse_event(self.stream)
+      except EOFException:
+        break
 
   def events_no_content(self):
-    pass
+    while True:
+      try:
+        yield self.parser.parse_event(self.stream, skip_content=True)
+      except EOFException:
+        break
 
   def curr_event(self):
-    pass
+    try:
+      return self.parser.parse_event(self.stream)
+    except EOFException:
+      return None
 
 
 class MemoryFile:
@@ -85,7 +97,7 @@ def binary_search(datafiles, ts):
     return None
   if datafiles[0].start > ts or datafiles[-1].end < ts:
     return None
-  
+
   while True:
     mid = (end+start)//2
     #print(start, end, mid)
@@ -109,10 +121,10 @@ class FileIndex:
   def __init__(self, root_dir):
     self.root = root_dir
     self.files = self._load_files(root_dir)
-  
+
   def _load_files(self, root_dir):
     files = []
-    
+
     for fn in listdir(root_dir):
       df = self._load_data_file(fn)
       if df:
@@ -123,7 +135,7 @@ class FileIndex:
     if len(files):
       print('Spanning from %d to %d' % (files[0].start, files[-1].end))
     return files
-  
+
   def _load_data_file(self, fname):
     if re.match('\d+-\d+', fname):
       start,_,end = fname.partition('-')
@@ -139,17 +151,17 @@ class FileIndex:
         df = self.files[idx]
         if df.start <= ts_from:
           found.append(df)
-        if df.end > ts_to:
+        if ts_to and df.end > ts_to:
           break
       return found
     return None
-  
+
   def find_event_file(self, ts_from):
     idx = binary_search(self.files, ts_from)
     if idx is not None:
       return idx[-1]
     return None
-  
+
   def add_file(self, fname):
     df = self._load_data_file(fname)
     if df:
@@ -161,7 +173,7 @@ class NaiveEventStore(EventStore):
 
   def __init__(self, root_dir):
     self.root_dir = root_dir
-    self.data_file_interval = 60*1000 # 60 seconds 
+    self.data_file_interval = 60*1000 # 60 seconds
     self.serializer = EventSerializer()
     self.index = FileIndex(root_dir)
     self.open_files = {}
@@ -177,14 +189,14 @@ class NaiveEventStore(EventStore):
       finally:
         self.write_lock.release()
     return data_file
-  
+
   def _open_file(self, data_file):
     return MemoryFile(name=None, path=data_file.path)
-  
+
   def _get_new_data_file(self, ts_from):
     ts_end = ts_from + self.data_file_interval
     return DataFile(join_paths(self.root_dir, '%d-%d'%(ts_from, ts_end)), ts_from, ts_end)
-  
+
   def save(self, event):
     # lookup file/create file
     # lock it
@@ -200,8 +212,6 @@ class NaiveEventStore(EventStore):
       mf.flush()
     finally:
       self.write_lock.release()
-    
-    
-    
-    
-    
+
+  def search(self, ts_start, ts_end=None, flags=None, match=None, order='asc'):
+    data_files = self.index.find(ts_start)

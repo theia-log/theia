@@ -1,12 +1,13 @@
 from time import time
 from collections import namedtuple
-from io import StringIO
+from io import StringIO, SEEK_CUR
+
 
 
 EventPreamble = namedtuple('EventPreamble', ['total','header','content'])
 
 class Header:
-  
+
   def __init__(self, id=None, timestamp=None, source=None, tags=None):
     self.id = id
     self.timestamp = timestamp
@@ -86,6 +87,8 @@ class EventParser:
 
   def parse_preamble(self, stream):
     pstr = stream.readline()
+    if pstr is None:
+      raise EOFException()
     if pstr:
       pstr = pstr.decode(self.encoding).strip()
     if not pstr or not pstr.startswith('event:'):
@@ -97,11 +100,22 @@ class EventParser:
 
     return EventPreamble(total=int(values[0]), header=int(values[1]), content=int(values[2]))
 
-  def parse_event(self, stream):
+  def parse_event(self, stream, skip_content=False):
     preamble = self.parse_preamble(stream)
     header = self.parse_header(preamble.header, stream)
-    content = stream.read(preamble.content)
+    content = None
+    if skip_content:
+      stream.seek(preamble.content, whence=SEEK_CUR)
+    else:
+      content = stream.read(preamble.content)
+      content=content.decode(self.encoding)
+
     if len(content) != preamble.content:
       raise Exception('Invalid content size. The stream is either unreadable or corrupted.')
 
-    return Event(id=header.id, source=header.source, timestamp=header.timestamp, tags=header.tags, content=content.decode(self.encoding))
+    return Event(id=header.id, source=header.source, timestamp=header.timestamp, tags=header.tags, content=content)
+
+
+
+def EOFException(Exception):
+  pass
