@@ -13,6 +13,7 @@ from theia.model import EventSerializer
 import websockets
 import asyncio
 import json
+import logging
 
 class Client:
 
@@ -101,9 +102,14 @@ class Server:
       while self._started:
         message = await websocket.recv()
         resp = await self._process_req(path, message, websocket)
-        await websocket.send(resp)
+        if resp is not None:
+          await websocket.send(str(resp))
+        print('Request handled. Server started: ', self._started)
     except Exception as e:
+      print(e)
       self._remove_websocket(websocket)
+      print('Closing websocket connection:', websocket)
+      logging.exception(e)
 
   def _remove_websocket(self, websocket):
     self.websockets.remove(websocket)
@@ -121,7 +127,7 @@ class Server:
     return resp
 
   def start(self):
-    start_server = websockets.serve(self._on_client_connection, self.host, self.port)
+    start_server = websockets.serve(self._on_client_connection, self.host, self.port, loop=self.loop)
     self.loop.run_until_complete(start_server)
     self._started = True
 
