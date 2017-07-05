@@ -3,6 +3,7 @@
 import asyncio
 import websockets
 from threading import Thread
+from uuid import uuid4
 
 
 from theia.comm import Client
@@ -17,10 +18,12 @@ def recv(msg):
 
 cl = Client(loop, host='localhost', port=8765,path='/event', recv=recv)
 cl.connect()
-print('2: cl.websocket.open: ' + str(cl.websocket.open))
 
 def do_send():
-  cl.send_event(Event(id='aaa',source='test',content='pajo'))
+  while True:
+    msg = input('>')
+    id=str(uuid4())
+    cl.send_event(Event(id=id,source='repl-test',content=msg))
+    print(' >>%s:%s' % (id, msg) )
 Thread(target=do_send).start()
 loop.run_forever()
-print('4')

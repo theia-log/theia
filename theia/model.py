@@ -39,7 +39,8 @@ class EventSerializer:
     event_str += 'event: %d %d %d\n' %(total_size, hdr_size, cnt_size)
     event_str += hdr
     event_str += event.content
-    return event_str
+    event_str += '\n'
+    return event_str.encode(self.encoding)
 
   def _serialize_header(self, event):
     hdr = ''
@@ -105,11 +106,13 @@ class EventParser:
     header = self.parse_header(preamble.header, stream)
     content = None
     if skip_content:
-      stream.seek(preamble.content, whence=SEEK_CUR)
+      stream.seek(preamble.content, SEEK_CUR)
     else:
       content = stream.read(preamble.content)
       content=content.decode(self.encoding)
-
+    print(stream, stream.seekable())
+    stream.seek(1, SEEK_CUR) # new line after each event
+    
     if len(content) != preamble.content:
       raise Exception('Invalid content size. The stream is either unreadable or corrupted.')
 

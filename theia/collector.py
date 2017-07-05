@@ -59,7 +59,7 @@ class Collector:
       print(e)
   
   def _store_event(self, message):
-    event = self.parser.parse_event(BytesIO(message.encode('utf-8')))
+    event = self.parser.parse_event(BytesIO(message))
     print('Event: %s' % event)
     self.store.save(event)
       
