@@ -64,15 +64,11 @@ class Client:
     return self.send(message)
 
   async def _recv(self):
-    print('1')
     while self._is_open:
-      print('2>')
       try:
         message = await self.websocket.recv()
-        print(' *** message>', message)
         await self._process_message(message)
       except Exception as e:
-        print('Error:', e)
         self._is_open = False
 
   async def _process_message(self, message):
