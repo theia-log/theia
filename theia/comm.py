@@ -33,6 +33,7 @@ class Client:
     self.websocket = websocket
     self._is_open = True
     asyncio.ensure_future(self._recv(), loop=self.loop)
+    print('connected')
     #self._recv()
   def connect(self):
     self.loop.run_until_complete(self._open_websocket())
@@ -54,10 +55,12 @@ class Client:
     return url
 
   def send(self, message):
+    print('call soon')
     return self.loop.call_soon_threadsafe(self.call_send, message)
 
   def call_send(self, message):
     asyncio.ensure_future(self.websocket.send(message), loop=self.loop)
+    print('scheduled to send')
 
   def send_event(self, event):
     message = self.serializer.serialize(event)

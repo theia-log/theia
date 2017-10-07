@@ -18,6 +18,9 @@ def get_parser(subparsers):
 
 def run_watcher(args):
   import socket
+  import asyncio
+  import functools
+  import signal
   from theia.comm import Server, Client
   from watchdog.observers import Observer
   from theia.watcher import SourcesDaemon
@@ -28,18 +31,21 @@ def run_watcher(args):
   hostname = socket.gethostname()
   print(hostname)
 
-  import asyncio
 
   loop = asyncio.get_event_loop()
 
   client = Client(loop=loop, host=args.collector_server, port=args.collector_port, path='/event', secure=args.secure)
 
   client.connect()
-
+  
   daemon = SourcesDaemon(observer=Observer(), client=client, tags=[hostname])
 
   for f in args.files:
-    daemon.add_source(f, args.tags)
+    daemon.add_source(fpath=f, tags=args.tags)
 
-
-  input('Press enter to stop')
+  loop.add_signal_handler(signal.SIGHUP, loop.stop)
+  loop.add_signal_handler(signal.SIGINT, loop.stop)
+  loop.add_signal_handler(signal.SIGTERM, loop.stop)
+  loop.run_forever()
+  loop.close()
+  print("Watcher stopped")

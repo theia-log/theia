@@ -54,6 +54,7 @@ class DirectoryEventHandler(FileSystemEventHandler):
     self.handlers = handlers
 
   def _notify(self, event, *args):
+    print('EVENT>', event, args)
     hnd = self.handlers.get(event)
     if hnd:
       hnd(*args)
@@ -93,6 +94,7 @@ class SourcesDaemon:
       ts = time()
       ev = Event(id=str(uuid4()), source=fpath, timestamp=ts, tags=evtags, content=diff)
       self.client.send_event(ev)
+      print(' > sent:', ev)
       
     fsrc = FileSource(fpath, callback, enc, tags)
     pdir, fname = self._split_path(fpath)
