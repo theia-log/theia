@@ -1,6 +1,7 @@
 from time import time
 from collections import namedtuple
 from io import StringIO, SEEK_CUR
+import re
 
 
 
@@ -22,7 +23,36 @@ class Event:
     self.timestamp = timestamp or time() # time in nanoseconds UTC
     self.tags = tags or []
     self.content = content or ''
+  
+  def match(self, id=None, source=None, start=None, end=None, content=None, tags=None):
+    matches = True
+    
+    if id is not None:
+      matches = _match(id, self.id)
+    if matches and source is not None:
+      matches = _match(source, self.source)
+    if matches and self.timestamp:
+      if start is not None:
+        matches = self.timestamp >= start
+      if matches and end is not None:
+        matches = self.timestamp <= end
+    if matches and content is not None:
+      matches = _match(content, self.content)
+    if matches and len(self.tags) and tags:
+      has_tag = False
+      for t in tags:
+        if t in self.tags:
+          has_tag = True
+      if not has_tag:
+        matches = False
+      
+    
+    return matches
 
+def _match(pattern, value):
+  if value is None:
+    return False
+  return re.match(pattern, value) is not None
 
 
 class EventSerializer:

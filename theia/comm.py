@@ -79,13 +79,30 @@ class Client:
       self.recv_handler(message)
 
 
+class wsHandler:
+  
+  def __init__(self, websocket, path):
+    self.ws = websocket
+    self.path = path
+    self.close_handlers = []
+  
+  def trigger(self):
+    for hnd in self.close_handlers:
+      try:
+        hdn(self.ws, self.path)
+      except:
+        pass
+  
+  def add_close_handler(self, hnd):
+    self.close_handlers.append(hnd)
+
 class Server:
 
   def __init__(self, loop, host='localhost', port=4479):
     self.loop = loop
     self.host = host
     self.port = port
-    self.websockets = set()
+    self.websockets = {}
     self._started = False
     self.actions = {}
 
@@ -96,7 +113,8 @@ class Server:
     actions.append(cb)
 
   async def _on_client_connection(self, websocket, path):
-    self.websockets.add(websocket)
+    #self.websockets.add(websocket)
+    self.websockets[websockets] = wsHandler(websocket, path)
     try:
       while self._started:
         message = await websocket.recv()
@@ -111,8 +129,19 @@ class Server:
       logging.exception(e)
 
   def _remove_websocket(self, websocket):
-    self.websockets.remove(websocket)
-
+    #self.websockets.remove(websocket)
+    hnd = self.websockets.get(websocket)
+    if hnd is not None:
+      del self.websockets[websocket]
+      hnd.trigger(websocket)
+  
+  def on_websocket_close(self, websocket, cb):
+    hnd = self.websockets.get(websocket)
+    if hnd is not None:
+      hnd.add_close_handler(cb)
+      return True
+    return False
+  
   async def _process_req(self, path, message, websocket):
     resp = ''
     for reg_path, actions in self.actions.items():
