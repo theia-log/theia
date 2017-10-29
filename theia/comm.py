@@ -38,8 +38,9 @@ class Client:
   def connect(self):
     self.loop.run_until_complete(self._open_websocket())
 
-  def close(self):
+  def close(self, reason=None):
     self._is_open = False
+    # TODO: add websocket close here perhaps
 
   def _get_ws_url(self):
     url = 'wss://' if self.secure else 'ws://'
