@@ -1,6 +1,8 @@
 from theia.cli.parser import get_parent_parser as parent_parser
 from theia.query import Query
 import asyncio
+from theia.model import EventParser
+from io import BytesIO
 
 def get_parser(subparsers):
   parser = subparsers.add_parser('query', help='Query for events')
@@ -34,10 +36,26 @@ def run_query(args):
   
   
   result = None
+  parser = EventParser('UTF-8')
+  fmt = '{timestamp} [{source}] {tags}: {content}'
   
+  def printev(evdata):
+    if isinstance(evdata, str):
+      print(evdata)
+      return
+    try:
+      ev = parser.parse_event(BytesIO(evdata))
+      print(fmt.format(**ev.__dict__))
+    except Exception as e:
+      print('> Failed to show event', e)
+      try:
+        print('Value received: ', evdata.decode('UTF-8'))
+      except:
+        print('Raw data:', evdata)
+    
   if args.live:
-    result = query.live(cf, print)
+    result = query.live(cf, printev)
   else:
-    result = query.find(cf, print)
-  
+    result = query.find(cf, printev)
+  print('loop forever')
   loop.run_forever()

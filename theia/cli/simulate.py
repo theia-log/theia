@@ -43,10 +43,10 @@ def generate_content(content=None, size=None):
 
 def generate_rand_items(items, default):
   if len(items) == 0:
-    return default
+    return [default]
   
   if len(items) == 1:
-    return items[0]
+    return items
   
   rn = randint(1, len(items))
   
@@ -67,12 +67,14 @@ def simulate_events(args):
   loop = asyncio.get_event_loop()
   client = Client(host=args.host, port=args.port,path='/event', loop=loop)
   
+  print('tags', args.tags)
   client.connect()
   
-  ser = EventSerializer()
   
+  ser = EventSerializer()
+  tags = [args.tags] if isinstance(args.tags, str) else args.tags
   def send_event():
-    e = generate_rand_event(args.sources, args.tags, args.content, args.content_size)
+    e = generate_rand_event(args.sources, tags, args.content, args.content_size)
     client.send_event(e)
     print(ser.serialize(e).decode('UTF-8'))
     print()

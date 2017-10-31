@@ -42,7 +42,7 @@ class Query:
     
     client.connect()
     
-    rh = requestHandler(client, _on_close)
+    rh = resultHandler(client, _on_close)
     self.connections.add(rh)
     
     msg = json.dumps(cf)

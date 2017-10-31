@@ -3,6 +3,7 @@ from theia.model import EventParser, EventSerializer
 import asyncio
 from threading import Thread
 from io import BytesIO
+import json
 
 
 class LiveFilter:
@@ -14,7 +15,7 @@ class LiveFilter:
   
   def _check_criteria(self):
     for k, v in self.criteria.items():
-      allowed = LiveFilter.ALLOWED_CRITERIA
+      allowed = LiveFilter.ALLOWED_CRITERIA[k]
       if allowed is None:
         raise Exception('unknown criteria %s'%k)
       if not isinstance(v, allowed):
@@ -36,7 +37,9 @@ class Live:
   
   async def pipe(self, event):
     for ws, f in self.filters.items():
+      print(' -> checking ', f)
       if f.match(event):
+        print(' -> match')
         try:
           result = None
           try:
@@ -108,12 +111,14 @@ class Collector:
     print('Event: %s' % event)
     self.store.save(event)
     try:
-      self.live.pipe(event)
-    except e:
+      #self.server_loop.call_soon_threadsafe(self.live.pipe, event)
+      asyncio.run_coroutine_threadsafe(self.live.pipe(event), self.server_loop)
+      print('piped')
+    except Exception as e:
       print('Error in pipe:', e, event)
     
   def _add_live_filter(self, path, message, websocket, resp):
     criteria = json.loads(message)
-    f = LiveFilter(criteria)
-    self.live.add_live_filter(f)
+    f = LiveFilter(websocket, criteria)
+    self.live.add_filter(f)
     return 'ok'

@@ -140,7 +140,7 @@ class EventParser:
     else:
       content = stream.read(preamble.content)
       content=content.decode(self.encoding)
-    print(stream, stream.seekable())
+    #print(stream, stream.seekable())
     stream.seek(1, SEEK_CUR) # new line after each event
     
     if len(content) != preamble.content:
