@@ -9,11 +9,13 @@ Server
  - Can route actions
 """
 
-from theia.model import EventSerializer
-import websockets
 import asyncio
 import json
 import logging
+import websockets
+
+from theia.model import EventSerializer
+
 
 class Client:
 
@@ -40,7 +42,7 @@ class Client:
 
   def close(self, reason=None):
     self._is_open = False
-    # TODO: add websocket close here perhaps
+    self.websocket.close(code=1000, reason=reason or 'normal close')
 
   def _get_ws_url(self):
     url = 'wss://' if self.secure else 'ws://'
@@ -74,6 +76,7 @@ class Client:
         await self._process_message(message)
       except Exception as e:
         self._is_open = False
+        logging.exception(e)
 
   async def _process_message(self, message):
     if self.recv_handler:
@@ -90,7 +93,7 @@ class wsHandler:
   def trigger(self):
     for hnd in self.close_handlers:
       try:
-        hdn(self.ws, self.path)
+        hnd(self.ws, self.path)
       except:
         pass
   
@@ -124,7 +127,6 @@ class Server:
           await websocket.send(str(resp))
         print('Request handled. Server started: ', self._started)
     except Exception as e:
-      print(e)
       self._remove_websocket(websocket)
       print('Closing websocket connection:', websocket)
       logging.exception(e)
@@ -151,12 +153,14 @@ class Server:
           for action in actions:
             resp = action(path, message, websocket, resp)
         except Exception as e:
+          logging.exception(e)
           return json.dumps({"error": str(e)})
         break
     return resp
 
   def start(self):
-    start_server = websockets.serve(self._on_client_connection, self.host, self.port, loop=self.loop)
+    start_server = websockets.serve(self._on_client_connection, 
+                                    self.host, self.port, loop=self.loop)
     self.loop.run_until_complete(start_server)
     self._started = True
 

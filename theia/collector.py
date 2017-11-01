@@ -48,6 +48,7 @@ class Live:
             #failed to serialize
             result = json.dumps({error: True, message: str(e)})
           await ws.send(result)
+          print('scheduled')
         except e:
           print('Something went wrong', e)
         
@@ -75,13 +76,18 @@ class Collector:
   
   def stop(self):
     self.server.stop()
-    # TODO: stop store loop
+    try:
+      self.store_loop.call_soon_threadsafe(self.store_loop.stop)
+    finally:
+      self.server_loop.call_soon_threadsafe(self.server_loop.stop)
   
   def _setup_store(self):
     def run_store_thread():
       loop = asyncio.new_event_loop()
       self.store_loop = loop
       loop.run_forever()
+      loop.close()
+      print('store is shut down.')
       
     self.store_thread = Thread(target=run_store_thread)
     self.store_thread.start()
@@ -95,6 +101,8 @@ class Collector:
       self.server.on_action('/live', self._add_live_filter)
       self.server.start()
       loop.run_forever()
+      loop.close()
+      print('server is shut down.')
     
     self.server_thread = Thread(target=run_in_server_thread)
     self.server_thread.start()
