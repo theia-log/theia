@@ -17,6 +17,7 @@ def get_parser(subparsers):
   parser.add_argument('-b', '--before', dest='f_before', metavar='TIMESTAMP', default=0, type=int, help='Match events before this timestamp')
   parser.add_argument('-c', '--content', dest='f_content', metavar='PATTERN', default=None, help='Match event content')
   parser.add_argument('-t', '--tags', nargs='*', dest='f_tags', metavar='PATTERN', help='Match any of the tags')
+  parser.add_argument('-o', '--order', dest='f_order', default='asc', metavar='ORDERING', help='Order of results (asc or desc). Valid only for "find".')
   
   parser.add_argument('-F', '--format-output', dest='o_format', default='{timestamp:15} [{source:10}] {tags:15}: {content}', metavar='FORMAT_STRING', help='Event output format string. Available properties are: id, tags, source, timestamp and content.')
   parser.add_argument('-T', '--format-timestamp', dest='o_ts_format', default='%Y-%m-%d %H:%M:%S.%f%Z', metavar='DATE_FORMAT_STRING', help='Timestamp strftime compatible format string')
@@ -57,6 +58,9 @@ def run_query(args):
     cf['content'] = args.f_content
   if args.f_tags:
     cf['tags'] = args.f_tags
+  
+  if not args.live:
+    cf['order'] = args.f_order
   
   
   result = None

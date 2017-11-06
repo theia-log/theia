@@ -23,7 +23,6 @@ class LiveFilter:
   
   def match(self, event):
     return event.match(**self.criteria)
-    
 
 
 class Live:
@@ -130,15 +129,16 @@ class Collector:
     criteria = json.loads(message)
     ts_from = criteria.get('start')
     ts_to = criteria.get('end')
+    flags = criteria.get('tags')
+    content = criteria.get('content')
+    order = criteria.get('order') or 'asc'
     if not ts_from:
       raise Exception('Missing start timestamp')
-    
-    self.store_loop.call_soon_threadsafe(self._find_event_results, ts_from, ts_to, websocket)
-    
+    self.store_loop.call_soon_threadsafe(self._find_event_results, ts_from, ts_to, flags, content, order, websocket)
     return 'ok'
     
-  def _find_event_results(self, start, end, websocket):
-    for ev in self.store.search(ts_start=start, ts_end=end):
+  def _find_event_results(self, start, end, flags, match, order, websocket):
+    for ev in self.store.search(ts_start=start, ts_end=end, flags=flags, match=match, order=order):
         ser = self.serializer.serialize(ev)
         asyncio.run_coroutine_threadsafe(websocket.send(ser), self.server_loop)
     

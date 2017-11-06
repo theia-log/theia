@@ -251,12 +251,12 @@ class NaiveEventStore(EventStore):
     return SequentialEventReader(open(data_file.path, 'rb'), EventParser())
     
   def _matches(self, event, flags, match):
-    if flags is not None:
+    if flags is not None and event.tags:
         for flag in flags:
-          if not flag in event.flags:
+          if not flag in event.tags:
             return False
     
-    if match and not match.tolower() in event.content.tolower():
+    if match and event.content and not match.lower() in event.content.lower():
       return False
     
     return True
