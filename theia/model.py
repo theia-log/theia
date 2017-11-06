@@ -64,11 +64,12 @@ class EventSerializer:
     event_str = ''
     hdr = self._serialize_header(event)
     hdr_size = len(hdr.encode(self.encoding))
-    cnt_size = len(event.content.encode(self.encoding))
+    cnt = event.content or ''
+    cnt_size = len(cnt.encode(self.encoding))
     total_size = hdr_size + cnt_size
     event_str += 'event: %d %d %d\n' %(total_size, hdr_size, cnt_size)
     event_str += hdr
-    event_str += event.content
+    event_str += cnt
     event_str += '\n'
     return event_str.encode(self.encoding)
 
@@ -118,12 +119,13 @@ class EventParser:
 
   def parse_preamble(self, stream):
     pstr = stream.readline()
-    if pstr is None:
+    if not pstr:
       raise EOFException()
     if pstr:
       pstr = pstr.decode(self.encoding).strip()
-    if not pstr or not pstr.startswith('event:'):
-      raise Exception('Invalid preamble line')
+ 
+    if not pstr.startswith('event:'):
+      raise Exception('Invalid preamble line: [%s]' % pstr)
 
     values = pstr[len('event:') + 1:].split(' ')
     if len(values) != 3:
@@ -140,15 +142,15 @@ class EventParser:
     else:
       content = stream.read(preamble.content)
       content=content.decode(self.encoding)
-    #print(stream, stream.seekable())
+      
     stream.seek(1, SEEK_CUR) # new line after each event
     
-    if len(content) != preamble.content:
+    if not skip_content and len(content) != preamble.content:
       raise Exception('Invalid content size. The stream is either unreadable or corrupted.')
 
     return Event(id=header.id, source=header.source, timestamp=header.timestamp, tags=header.tags, content=content)
 
 
 
-def EOFException(Exception):
+class EOFException(Exception):
   pass

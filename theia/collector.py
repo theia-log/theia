@@ -37,9 +37,7 @@ class Live:
   
   async def pipe(self, event):
     for ws, f in self.filters.items():
-      print(' -> checking ', f)
       if f.match(event):
-        print(' -> match')
         try:
           result = None
           try:
@@ -47,8 +45,8 @@ class Live:
           except se:
             #failed to serialize
             result = json.dumps({error: True, message: str(e)})
+            print('err=', se)
           await ws.send(result)
-          print('scheduled')
         except e:
           print('Something went wrong', e)
         
@@ -99,6 +97,7 @@ class Collector:
       self.server = Server(loop=loop, host=self.hostname, port=self.port)
       self.server.on_action('/event', self._on_event)
       self.server.on_action('/live', self._add_live_filter)
+      self.server.on_action('/find', self._find_event)
       self.server.start()
       loop.run_forever()
       loop.close()
@@ -108,7 +107,6 @@ class Collector:
     self.server_thread.start()
   
   def _on_event(self, path, message, websocket, resp):
-    print('_on_event:', message)
     try:
       self.store_loop.call_soon_threadsafe(self._store_event, message)
     except Exception as e:
@@ -116,12 +114,9 @@ class Collector:
   
   def _store_event(self, message):
     event = self.parser.parse_event(BytesIO(message))
-    print('Event: %s' % event)
     self.store.save(event)
     try:
-      #self.server_loop.call_soon_threadsafe(self.live.pipe, event)
       asyncio.run_coroutine_threadsafe(self.live.pipe(event), self.server_loop)
-      print('piped')
     except Exception as e:
       print('Error in pipe:', e, event)
     
@@ -130,3 +125,21 @@ class Collector:
     f = LiveFilter(websocket, criteria)
     self.live.add_filter(f)
     return 'ok'
+  
+  def _find_event(self, path, message, websocket, resp):
+    criteria = json.loads(message)
+    ts_from = criteria.get('start')
+    ts_to = criteria.get('end')
+    if not ts_from:
+      raise Exception('Missing start timestamp')
+    
+    self.store_loop.call_soon_threadsafe(self._find_event_results, ts_from, ts_to, websocket)
+    
+    return 'ok'
+    
+  def _find_event_results(self, start, end, websocket):
+    for ev in self.store.search(ts_start=start, ts_end=end):
+        ser = self.serializer.serialize(ev)
+        asyncio.run_coroutine_threadsafe(websocket.send(ser), self.server_loop)
+    
+    

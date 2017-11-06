@@ -55,7 +55,7 @@ class SequentialEventReader:
   def __enter__(self):
     return self
   
-  def __exit__(self):
+  def __exit__(self, *args):
     self.stream.close()
 
 
@@ -143,7 +143,6 @@ class FileIndex:
     return files
 
   def _load_data_file(self, fname):
-    print('_load_data_file:', fname)
     if re.match('\d+-\d+', fname):
       start,_,end = fname.partition('-')
       start,end = int(start),int(end)
@@ -156,15 +155,15 @@ class FileIndex:
       found = []
       while idx < len(self.files):
         df = self.files[idx]
-        if df.start <= ts_from:
+        if df.start >= ts_from:
           found.append(df)
         if ts_to and df.end > ts_to:
           break
+        idx += 1
       return found
     return None
 
   def find_event_file(self, ts_from):
-    print(ts_from, ' in ', self.files)
     idx = binary_search(self.files, ts_from)
     if idx is not None:
       return self.files[-1]
@@ -222,9 +221,10 @@ class NaiveEventStore(EventStore):
       self.write_lock.release()
 
   def search(self, ts_start, ts_end=None, flags=None, match=None, order='asc'):
-    data_files = self.index.find(ts_start)
-    for data_file in data_files:
-      yield from self._search_data_file(data_file, ts_start, ts_end, flags, match, order=='desc')
+    data_files = self.index.find(ts_start, ts_end)
+    if data_files:
+      for data_file in data_files:
+        yield from self._search_data_file(data_file, ts_start, ts_end, flags, match, order=='desc')
   
   def _search_data_file(self, data_file, ts_start, ts_end, flags, match, reverse):
     if reverse:
@@ -234,12 +234,9 @@ class NaiveEventStore(EventStore):
   
   def _match_forward(self, data_file, ts_start, ts_end, flags, match):
     with self._seq_event_parser(data_file) as sqp:
-      events_iter = sqp.events if match is not None else sqp.events_no_content
-      
-      for event in events_iter():
-        if event.timestamp >= ts_start and event.timestamp <= ts_end:
-          if self._match(event, flags, match):
-            event.content = None
+      for event in sqp.events():
+        if event.timestamp >= ts_start and (ts_end is None or event.timestamp <= ts_end):
+          if self._matches(event, flags, match):
             yield event
         
   
@@ -251,12 +248,13 @@ class NaiveEventStore(EventStore):
       yield m
     
   def _seq_event_parser(self, data_file):
-    return SequentialEventParser(open(data_file.path, 'rb'), EventParser())
+    return SequentialEventReader(open(data_file.path, 'rb'), EventParser())
     
   def _matches(self, event, flags, match):
-    for flag in flags:
-      if not flag in event.flags:
-        return False
+    if flags is not None:
+        for flag in flags:
+          if not flag in event.flags:
+            return False
     
     if match and not match.tolower() in event.content.tolower():
       return False
