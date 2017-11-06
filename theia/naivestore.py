@@ -15,15 +15,37 @@ Provides:
 
 from tempfile import NamedTemporaryFile
 from io import BytesIO
-from threading import Lock
+from threading import Lock, Thread
 from shutil import move
 from os.path import join as join_paths, basename, dirname
 from os import listdir
 from collections import namedtuple
 import re
+import time
 
 from theia.storeapi import EventStore
 from theia.model import EventSerializer, EventParser, EOFException, Event
+
+class PeriodicTimer(Thread):
+  
+  def __init__(self, interval, action):
+    super(PeriodicTimer, self).__init__(name='periodic-timer@%f:[%s]'%(interval, str(action)))
+    self.interval = interval
+    self.action = action
+    self.is_running = False
+  
+  def run(self):
+    self.is_running = True
+    
+    while self.is_running:
+      time.sleep(self.interval)
+      try:
+        self.action()
+      except:
+        pass
+  
+  def cancel(self):
+    self.is_running = False
 
 
 class SequentialEventReader:
@@ -178,13 +200,19 @@ class FileIndex:
 
 class NaiveEventStore(EventStore):
 
-  def __init__(self, root_dir):
+  def __init__(self, root_dir, flush_interval=1000):
     self.root_dir = root_dir
     self.data_file_interval = 60 # 60 seconds
     self.serializer = EventSerializer()
     self.index = FileIndex(root_dir)
     self.open_files = {}
     self.write_lock = Lock()
+    self.flush_interval = flush_interval # <=0 immediate, otherwise will flush periodically
+    self.timer = None
+    if flush_interval > 0:
+      self.timer = PeriodicTimer(flush_interval/1000, self._flush_open_files)
+      self.timer.start()
+      print('Flushing buffers every %fms'%(flush_interval/1000))
 
   def _get_event_file(self, ts_from):
     data_file = self.index.find_event_file(ts_from)
@@ -199,6 +227,13 @@ class NaiveEventStore(EventStore):
 
   def _open_file(self, data_file):
     return MemoryFile(name=basename(data_file.path), path=dirname(data_file.path))
+  
+  def _flush_open_files(self):
+    for fn,open_file in self.open_files.items():
+      try:
+        open_file.flush()
+      except Exception as e:
+        print('Error while flushing %s'%fn, e)
 
   def _get_new_data_file(self, ts_from):
     ts_end = ts_from + self.data_file_interval
@@ -216,7 +251,8 @@ class NaiveEventStore(EventStore):
         self.open_files[df.path] = self._open_file(df)
       mf = self.open_files[df.path]
       mf.write(self.serializer.serialize(event))
-      mf.flush()
+      if self.flush_interval <= 0:
+        mf.flush()
     finally:
       self.write_lock.release()
 
@@ -225,6 +261,13 @@ class NaiveEventStore(EventStore):
     if data_files:
       for data_file in data_files:
         yield from self._search_data_file(data_file, ts_start, ts_end, flags, match, order=='desc')
+  
+  def close(self):
+    self._flush_open_files()
+    if self.timer:
+      self.timer.cancel()
+      self.timer.join()
+    print('Naive Store stopped')
   
   def _search_data_file(self, data_file, ts_start, ts_end, flags, match, reverse):
     if reverse:

@@ -77,6 +77,7 @@ class Collector:
       self.store_loop.call_soon_threadsafe(self.store_loop.stop)
     finally:
       self.server_loop.call_soon_threadsafe(self.server_loop.stop)
+    self.store.close()
   
   def _setup_store(self):
     def run_store_thread():
