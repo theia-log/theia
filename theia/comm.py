@@ -56,7 +56,7 @@ class Client:
                 url += self.path
             else:
                 url += '/' + self.path
-        print('URL: %s' %url)
+        print('URL: %s' % url)
         return url
 
     def send(self, message):
@@ -109,6 +109,7 @@ class wsHandler:
     def add_close_handler(self, hnd):
         self.close_handlers.append(hnd)
 
+
 class Server:
 
     def __init__(self, loop, host='localhost', port=4479):
@@ -143,7 +144,7 @@ class Server:
             logging.exception(e)
 
     def _remove_websocket(self, websocket):
-        #self.websockets.remove(websocket)
+        # self.websockets.remove(websocket)
         hnd = self.websockets.get(websocket)
         if hnd is not None:
             del self.websockets[websocket]

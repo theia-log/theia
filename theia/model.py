@@ -6,8 +6,8 @@ from io import StringIO, SEEK_CUR
 import re
 
 
-
 EventPreamble = namedtuple('EventPreamble', ['total', 'header', 'content'])
+
 
 class Header:
     """Header represents an Event header. The header contains the following 
@@ -37,19 +37,20 @@ class Event:
     structured text.
     Each event may have a list of *tags* associcated with it. These are arbitrary
     strings and help in filtering the events.
-    
+
     An event may look like this:
-    
+
         id:331c531d-6eb4-4fb5-84d3-ea6937b01fdd
         timestamp: 1509989630.6749051
         source:/dev/sensors/door1-sensor
         tags:sensors,home,doors,door1
         Door has been unlocked.
     """
+
     def __init__(self, id, source, timestamp=None, tags=None, content=None):
         self.id = id
         self.source = source
-        self.timestamp = timestamp or time() # time in nanoseconds UTC
+        self.timestamp = timestamp or time()  # time in nanoseconds UTC
         self.tags = tags or []
         self.content = content or ''
 
@@ -77,6 +78,7 @@ class Event:
 
         return matches
 
+
 def _match(pattern, value):
     if value is None:
         return False
@@ -95,7 +97,7 @@ class EventSerializer:
         cnt = event.content or ''
         cnt_size = len(cnt.encode(self.encoding))
         total_size = hdr_size + cnt_size
-        event_str += 'event: %d %d %d\n' %(total_size, hdr_size, cnt_size)
+        event_str += 'event: %d %d %d\n' % (total_size, hdr_size, cnt_size)
         event_str += hdr
         event_str += cnt
         event_str += '\n'
@@ -119,7 +121,7 @@ class EventParser:
         hbytes = stream.read(hdr_size)
         if len(hbytes) != hdr_size:
             raise Exception('Invalid read size from buffer. The stream is either unreadable \
-                             or corrupted. %d read, expected %d' %(len(hbytes), hdr_size))
+                             or corrupted. %d read, expected %d' % (len(hbytes), hdr_size))
         hdr_str = hbytes.decode(self.encoding)
         header = Header()
         sio = StringIO(hdr_str)
@@ -131,7 +133,7 @@ class EventParser:
                 raise Exception('Invalid header')
             idx = line.index(':')
             prop = line[0:idx]
-            value = line[idx+1:]
+            value = line[idx + 1:]
             if prop == 'id':
                 header.id = value
             elif prop == 'timestamp':
@@ -172,7 +174,7 @@ class EventParser:
             content = stream.read(preamble.content)
             content = content.decode(self.encoding)
 
-        stream.seek(1, SEEK_CUR) # new line after each event
+        stream.seek(1, SEEK_CUR)  # new line after each event
 
         if not skip_content and len(content) != preamble.content:
             raise Exception('Invalid content size. The stream is either unreadable or corrupted.')

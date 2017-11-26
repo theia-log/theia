@@ -7,13 +7,10 @@ s.init_tty()
 s.cls()
 
 
+w, h = s.screen_size()
+d = Dialog(0, 0, w, h)
 
-
-w,h = s.screen_size()
-d = Dialog(0,0,w,h)
-
-d.add(1,1, WAutoComplete(10,'a',['pajo','majo']))
-
+d.add(1, 1, WAutoComplete(10, 'a', ['pajo', 'majo']))
 
 
 d.loop()

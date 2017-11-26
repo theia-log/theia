@@ -13,14 +13,14 @@ get_query_parser(subparsers)
 args = parser.parse_args()
 
 if args.version:
-  from theia.metadata import version
-  from sys import exit
-  print('theia', version)
-  exit(0)
+    from theia.metadata import version
+    from sys import exit
+    print('theia', version)
+    exit(0)
 
 if args.command == 'watch':
-  run_watcher(args)
+    run_watcher(args)
 elif args.command == 'collect':
-  run_collector(args)
+    run_collector(args)
 elif args.command == 'query':
-  run_query(args)
+    run_query(args)
