@@ -1,12 +1,27 @@
-from theia.comm import Server
-from theia.model import EventParser, EventSerializer
+"""Log aggregator collector.
+"""
 import asyncio
-from threading import Thread
 from io import BytesIO
 import json
+from logging import getLogger
+from threading import Thread
+from theia.comm import Server
+from theia.model import EventParser, EventSerializer
+
+
+
+log = getLogger(__name__)
 
 
 class LiveFilter:
+    """Filter for the live event pipe.
+
+    Holds a single criteria to filter events by.
+
+    Args:
+        ws(WebSocket) - reference to the web socoket instance.
+        criteria(dict) - dict holding criteria values.
+    """
     ALLOWED_CRITERIA = {'id': str, 'source': str,
                         'start': int, 'end': int, 'content': str, 'tags': list}
 
@@ -16,44 +31,82 @@ class LiveFilter:
         self._check_criteria()
 
     def _check_criteria(self):
-        for k, v in self.criteria.items():
+        for k, value in self.criteria.items():
             allowed = LiveFilter.ALLOWED_CRITERIA[k]
             if allowed is None:
                 raise Exception('unknown criteria %s' % k)
-            if not isinstance(v, allowed):
+            if not isinstance(value, allowed):
                 raise Exception('invalid value for criteria %s' % k)
 
     def match(self, event):
+        """Matches an event to the criteria of this filter.
+
+        Args:
+            event(Event) - the event to match.
+
+        Returns:
+            match(bool) - True if the event matches the criteria, otherwise False.
+        """
         return event.match(**self.criteria)
 
 
 class Live:
+    """Live event pipeline.
 
+    Each event is passed through the live event pipeline and matched to the
+    LiveFilter filters.
+
+    Args:
+        serializer(theia.model.Serializer) - event serializer.
+    """
     def __init__(self, serializer):
         self.serializer = serializer
         self.filters = {}
 
-    def add_filter(self, f):
-        self.filters[f.ws] = f
+    def add_filter(self, lfilter):
+        """Adds new filter to the pipeline.
+
+        Args:
+            lfilter(LiveFilter) - the filter to add to the pipeline.
+        """
+        self.filters[lfilter.ws] = lfilter
 
     async def pipe(self, event):
-        for ws, f in self.filters.items():
-            if f.match(event):
+        """Add an event to the live pipeline.
+
+        The event will be matched against all filters in this pipeline.
+
+        Args:
+            event(theia.model.Event): the event to be pipelined.
+        """
+        for ws, live_filter in self.filters.items():
+            if live_filter.match(event):
                 try:
                     result = None
                     try:
                         result = self.serializer.serialize(event)
-                    except se:
+                    except Exception as se:
                         # failed to serialize
-                        result = json.dumps({error: True, message: str(e)})
-                        print('err=', se)
+                        result = json.dumps({'error': True, 'message': str(se)})
+                        log.debug('Serialization error: %s', se)
                     await ws.send(result)
-                except e:
-                    print('Something went wrong', e)
+                except Exception as e:
+                    log.error('Something went wrong: %s', e)
+                    log.exception(e)
 
 
 class Collector:
+    """Collector server.
 
+    Collects the events, passes them down the live pipe filters and stores them
+    in the event store.
+
+    Args:
+        store(theia.storeapi.Store): store instance
+        hostame(str): server hostname. Default is '0.0.0.0'.
+        port(int: server port. Default is 4300.
+    """
+    # pylint: disable=too-many-instance-attributes
     def __init__(self, store, hostname='0.0.0.0', port=4300):
         self.hostname = hostname
         self.port = port
@@ -68,11 +121,19 @@ class Collector:
         self.live = Live(self.serializer)
 
     def run(self):
+        """Run the collector server.
+
+        This operation is blocking.
+        """
         self._setup_store()
         self._setup_server()
         self.store_thread.join()
 
     def stop(self):
+        """Stop the collector server.
+
+        This operation is non-blocking.
+        """
         self.server.stop()
         try:
             self.store_loop.call_soon_threadsafe(self.store_loop.stop)
@@ -86,7 +147,7 @@ class Collector:
             self.store_loop = loop
             loop.run_forever()
             loop.close()
-            print('store is shut down.')
+            log.info('store is shut down.')
 
         self.store_thread = Thread(target=run_store_thread)
         self.store_thread.start()
@@ -102,7 +163,7 @@ class Collector:
             self.server.start()
             loop.run_forever()
             loop.close()
-            print('server is shut down.')
+            log.info('server is shut down.')
 
         self.server_thread = Thread(target=run_in_server_thread)
         self.server_thread.start()
@@ -111,7 +172,7 @@ class Collector:
         try:
             self.store_loop.call_soon_threadsafe(self._store_event, message)
         except Exception as e:
-            print(e)
+            log.exception(e)
 
     def _store_event(self, message):
         event = self.parser.parse_event(BytesIO(message))
@@ -119,12 +180,12 @@ class Collector:
         try:
             asyncio.run_coroutine_threadsafe(self.live.pipe(event), self.server_loop)
         except Exception as e:
-            print('Error in pipe:', e, event)
+            log.error('Error in pipe: %s (event: %s)', e, event)
 
     def _add_live_filter(self, path, message, websocket, resp):
         criteria = json.loads(message)
-        f = LiveFilter(websocket, criteria)
-        self.live.add_filter(f)
+        live_filter = LiveFilter(websocket, criteria)
+        self.live.add_filter(live_filter)
         return 'ok'
 
     def _find_event(self, path, message, websocket, resp):
@@ -141,6 +202,7 @@ class Collector:
         return 'ok'
 
     def _find_event_results(self, start, end, flags, match, order, websocket):
-        for ev in self.store.search(ts_start=start, ts_end=end, flags=flags, match=match, order=order):
-            ser = self.serializer.serialize(ev)
+        for event in self.store.search(ts_start=start, ts_end=end, flags=flags,
+                                       match=match, order=order):
+            ser = self.serializer.serialize(event)
             asyncio.run_coroutine_threadsafe(websocket.send(ser), self.server_loop)
