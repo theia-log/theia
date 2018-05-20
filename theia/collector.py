@@ -12,7 +12,8 @@ from theia.model import EventParser, EventSerializer
 
 log = getLogger(__name__)
 
-
+# pylint: disable=too-few-public-methods
+# This needs only one method.
 class LiveFilter:
     """Filter for the live event pipe.
 
@@ -22,6 +23,7 @@ class LiveFilter:
         ws(WebSocket) - reference to the web socoket instance.
         criteria(dict) - dict holding criteria values.
     """
+
     ALLOWED_CRITERIA = {'id': str, 'source': str,
                         'start': int, 'end': int, 'content': str, 'tags': list}
 
@@ -47,6 +49,7 @@ class LiveFilter:
         Returns:
             match(bool) - True if the event matches the criteria, otherwise False.
         """
+
         return event.match(**self.criteria)
 
 
@@ -59,6 +62,7 @@ class Live:
     Args:
         serializer(theia.model.Serializer) - event serializer.
     """
+
     def __init__(self, serializer):
         self.serializer = serializer
         self.filters = {}
@@ -79,6 +83,7 @@ class Live:
         Args:
             event(theia.model.Event): the event to be pipelined.
         """
+
         for ws, live_filter in self.filters.items():
             if live_filter.match(event):
                 try:
@@ -106,6 +111,7 @@ class Collector:
         hostame(str): server hostname. Default is '0.0.0.0'.
         port(int: server port. Default is 4300.
     """
+
     # pylint: disable=too-many-instance-attributes
     def __init__(self, store, hostname='0.0.0.0', port=4300):
         self.hostname = hostname
@@ -134,6 +140,7 @@ class Collector:
 
         This operation is non-blocking.
         """
+
         self.server.stop()
         try:
             self.store_loop.call_soon_threadsafe(self.store_loop.stop)
@@ -143,6 +150,9 @@ class Collector:
 
     def _setup_store(self):
         def run_store_thread():
+            """Runs the store loop in a separate thread.
+            """
+
             loop = asyncio.new_event_loop()
             self.store_loop = loop
             loop.run_forever()
@@ -154,6 +164,9 @@ class Collector:
 
     def _setup_server(self):
         def run_in_server_thread():
+            """Runs the server loop in a separate thread.
+            """
+
             loop = asyncio.new_event_loop()
             self.server_loop = loop
             self.server = Server(loop=loop, host=self.hostname, port=self.port)
