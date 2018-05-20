@@ -125,7 +125,7 @@ def binary_search(datafiles, ts):
     end = len(datafiles) - 1
     if not len(datafiles):
         return None
-    if datafiles[0].start >= ts or datafiles[-1].end <= ts:
+    if datafiles[0].start > ts or datafiles[-1].end < ts:
         return None
 
     while True:
