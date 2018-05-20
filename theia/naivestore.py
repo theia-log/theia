@@ -304,3 +304,196 @@ class NaiveEventStore(EventStore):
             return False
 
         return True
+
+
+# ----- Index implementation -----
+# based on B+ tree
+
+KeyPtr = namedtuple('KeyPtr', ['key', 'ptr'])
+NodeHeader = namedtule('NodeHeader', ['leaf', 'children'])
+
+class Node:
+    LEAF_MASK =    0x0800
+    MAX_CHILDREN = 0x07ff
+    
+    def size(children):
+        # 2 (header) + 8 (last_ptr) + 8 (prev) + 8 (next) + children*(8 (key) + 8 (ptr))
+        return 26+children*16
+    
+    def to_header(header_bytes, endianness='little'):
+        header = to_int(header_bytes, endianness)
+        is_leaf = header & Node.LEAF_MASK
+        children = header & Node.MAX_CHILDREN
+        return NodeHeader(is_leaf, children)
+    
+    def __init__(self, addr):
+        self.addr = addr
+        self.pointers = []
+        self.last_ptr = None
+        self.leaf = False
+        self.next = None
+        self.prev = None
+    
+    def search(self, key):
+        result = None
+        for ptr in self.pointers:
+            if key < ptr.key:
+                result = ptr
+            else:
+                break
+        if not result:
+            result = self.last_ptr
+        return result
+    
+    def _find_idx(self, key):
+        i = -1
+        for p in self.pointers:
+            if ptr.key <= p.key:
+                i += 1
+            else:
+                break
+        return i
+    
+    def insert(self, ptr):
+        i = self._find_idx(ptr.key)
+        if i < 0:
+            self.pointers.append(ptr)
+            return None
+        
+        is_update = self.pointers[i].key == ptr.key
+        
+        if is_update:
+            p = self.pointers[i]
+            self.pointers[i] = ptr
+            return p
+        
+        if i == 0:
+            self.pointers = [ptr] + self.pointers
+        else:
+            self.pointers = self.pointers[:i] + [ptr] + self.pointers[i+1:]
+        
+        return None
+    
+    def remove(self, key):
+        i = self._find_idx(key)
+        ptr = self.pointers[i] if i >= 0 else None
+        self.pointers = self.pointers[0:i] + self.pointers[i+1:]
+        return ptr
+    
+    def serialize(self, children_size, endianness='little'):
+        """Serialize a node to binary format.
+        2B: Header
+        8B: prev
+        8B: next
+        8B: last_ptr
+        xB: pointers
+        """
+        header = Node.LEAF_MASK if self.leaf else 0x0
+        if len(self.pointers) > Node.MAX_CHILDREN:
+            raise Exception('Too many children pointers: %d but %d allowed' %
+                            (len(self.pointers), Node.MAX_CHILDREN))
+        header = header | len(self.pointers)
+        arr = header.to_bytes(2, endianness)  # 2 bytes, little endian
+        arr += (self.prev or 0).to_bytes(8, endianness)
+        arr += (self.next or 0).to_bytes(8, endianness)
+        arr += (self.last_ptr or 0).to_bytes(8, endianness)
+        
+        for p in self.pointers:
+            arr += p.key.to_bytes(8, endianness)  # key is 64bit hash
+            arr += p.ptr.to_bytes(8, endianness)  # 64bit address space
+        
+        for i in range(0, children_size-len(self.pointers)):
+            attr += bytes(16)
+        return arr
+    
+    def deserialize(self, byte_data):
+        pass
+    
+class BPTree:
+    
+    def __init__(self, store, branching_factor=100):
+        self.store = store
+        self.b = branching_factor
+        self.root = None
+    
+    def insert(self, key, value):
+        node = None
+        if not self.root:
+            self.root = self._new_node()
+            node = self.root
+        else:
+            node = self.search(key)
+        
+        if len(node.pointers) < (self.b - 1):
+            # insert here
+            pass
+        else:
+            # bucket is full
+            
+            # split the node
+            n2 = self._new_node()
+            l = len(node.pointers)//2
+            n2.pointers = node.pointers[l:]
+            node.pointers = node.pointers[:l+1]
+            n2.prev = node.addr
+            node.next = n2.addr
+            n2.parent = node.parent
+            if node.parent = None: # root node
+                parent = self._new_node()
+                
+        
+    
+    def remove(self, key):
+        pass
+    
+    def search(self, key):
+        pass
+    
+    def _load_node(self, addr):
+        header_bytes = self.store.read(addr, 2)
+        header = Node.to_header(header_bytes)
+        size = Node.size_with_children(header.children)
+        body_bytes = self.store.read(addr+2, size-2)
+        node = Node(addr)
+        node.deserialize(header_bytes + body_bytes)
+        return node
+    
+    def _store_node(self, node):
+        pass
+    
+    def _new_node(self):
+        addr = self.store.allocate(Node.size(self.b))
+        return Node(addr=addr)
+    
+
+class BlockStore:
+    
+    def __init__(self):
+        pass
+    
+    def read(self, start, size=1):
+        pass
+    
+    def write(self, start, data):
+        pass
+    
+    def allocate(self, size):
+        pass
+    
+    def delete(self, start, size):
+        pass
+
+
+def to_int(byte_arr, endianness='little'):
+    result = 0
+    coeff = 0
+    
+    if endianness not in ['little', 'big']:
+        raise Exception("endiannness must be either 'little' or 'big'")
+    if endianness == 'big':
+        byte_arr = reversed(byte_arr)
+
+    for b in byte_arr:
+        result = result | (b&0xff)<<coeff
+        coeff += 8
+    return result
