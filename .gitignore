@@ -5,3 +5,4 @@ ENV
 VENV
 env
 venv
+docs/build
