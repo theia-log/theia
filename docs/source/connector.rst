@@ -1,4 +1,0 @@
-Connector Websocket API
-=======================
-
-

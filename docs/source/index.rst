@@ -9,10 +9,11 @@ Welcome to theia's documentation!
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
-
-Installation
-============
-
+   
+   install
+   developer
+   collector
+   api
 
 
 Indices and tables
@@ -21,17 +22,5 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
-
-:doc:`api`
-============
-
-Read the full API docs.
-
-
-:doc:`connector`
-==================
-
-Read the Websocket API for the theia collector.
 
 
