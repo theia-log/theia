@@ -104,7 +104,7 @@ class EventSerializer:
         event_str += 'event: %d %d %d\n' % (total_size, hdr_size, cnt_size)
         event_str += hdr
         event_str += cnt
-        event_str += '\n'
+        #event_str += '\n'
         return event_str.encode(self.encoding)
 
     def _serialize_header(self, event):

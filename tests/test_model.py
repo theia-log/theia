@@ -13,7 +13,7 @@ class TestEventSerializer(TestCase):
         expected = ['event: 68 58 10', 'id:id1', 'timestamp:',
                     'source:env1', 'tags:a,b', 'TEST EVENT']
         i = 0
-        for line in ev_str.split('\n'):
+        for line in ev_str.decode('utf-8').split('\n'):
             if i == 2:
                 assert line.startswith('timestamp:')
             else:
