@@ -26,9 +26,7 @@ setuptools.setup(
         "Topic :: Utilities",
     ),
     install_requires=[
-        "pathtools==0.1.2",
         "picotui==0.9.1",
-        "PyYAML==3.12",
         "watchdog==0.8.3",
         "websockets==3.3",
     ]
