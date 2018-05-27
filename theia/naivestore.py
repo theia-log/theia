@@ -253,6 +253,7 @@ class NaiveEventStore(EventStore):
                 self.open_files[df.path] = self._open_file(df)
             mf = self.open_files[df.path]
             mf.write(self.serializer.serialize(event))
+            mf.write('\n'.encode('utf-8'))
             if self.flush_interval <= 0:
                 mf.flush()
         finally:

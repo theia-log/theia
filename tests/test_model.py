@@ -11,7 +11,7 @@ class TestEventSerializer(TestCase):
         ev_str = EventSerializer().serialize(
             Event(id='id1', source='env1', tags=['a', 'b'], content='TEST EVENT'))
         expected = ['event: 68 58 10', 'id:id1', 'timestamp:',
-                    'source:env1', 'tags:a,b', 'TEST EVENT']
+                    'source:env1', 'tags:a,b', 'TEST EVENT', '']
         i = 0
         for line in ev_str.decode('utf-8').split('\n'):
             if i == 2:

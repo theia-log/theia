@@ -5,7 +5,7 @@
 from theia.storeapi import EventStore, EventWriteException, EventReadException, EventNotFound, EventStoreException
 from theia.model import Event
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, create_engine, desc
+from sqlalchemy import Column, Integer, String, Float, create_engine, desc
 from sqlalchemy.orm import sessionmaker
 import re
 
@@ -48,12 +48,15 @@ class RDBSEventStore(EventStore):
             sess.close() 
     
     def delete(self, event_id):
+        print('**********')
         sess = self._session()
         try:
-            er = sess.query(EventRecord).filter(EventRecord.id == event_id).first()
+            er = sess.query(EventRecord).get(event_id)
             if not er:
                 raise EventNotFound()
             sess.delete(er)
+            sess.commit()
+            print('DELETED:', er)
         except Exception as e:
             raise EventWriteException(str(e)) from e
         finally:
@@ -63,9 +66,16 @@ class RDBSEventStore(EventStore):
     def get(self, event_id):
         sess = self._session()
         try:
-            er = sess.query(EventRecord).filter(EventRecord.id == event_id).first()
+            er = sess.query(EventRecord).get(event_id)
             if not er:
                 raise EventNotFound()
+            return Event(id=er.id,
+                         timestamp=str(er.timestamp),
+                         tags=(er.tags or '').split(','),
+                         source=er.source,
+                         content=er.content)
+        except EventNotFound as ne:
+            raise ne
         except Exception as e:
             raise EventReadException(str(e)) from e
         finally:
@@ -75,7 +85,7 @@ class RDBSEventStore(EventStore):
         if not ts_start:
             raise EventStoreException('start timestamp is required when searching events')
         
-        flag_mathers = None
+        flag_matchers = None
         content_matcher = None
         if flags and len(flags):
             try:
@@ -101,14 +111,11 @@ class RDBSEventStore(EventStore):
             else:
                 q.order_by(desc(EventRecord.timestamp))
             
-            q.limit(self.bulk_size)
-            q.offset(b*self.bulk_size)
-            
             results = []
-            rows = q.all()
-            has_more = len(rows) > 0
-            for er in q.all():
-                flags = (er.flags or '').split(',')
+            count = 0
+            for er in q.limit(self.bulk_size).offset(b*self.bulk_size).all():
+                count += 1
+                flags = (er.tags or '').split(',')
                 
                 if flag_matchers:
                     if not match_all(flag_matchers, flags):
@@ -125,8 +132,7 @@ class RDBSEventStore(EventStore):
                            content=er.content)
                         
                 results.append(ev)
-            
-            return results, b, has_more
+            return results, b, count > 0
         
         page = 0
         has_more = True
@@ -152,6 +158,7 @@ def match_all(matchers, values):
 
 def create_store(db_url, verbose=False):
     engine = create_engine(db_url, echo=verbose)
+    Base.metadata.create_all(engine)
     session_factory = sessionmaker(bind=engine)
     
     return RDBSEventStore(session_factory)
