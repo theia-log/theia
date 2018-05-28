@@ -18,7 +18,7 @@ before_script:
     - ./cc-test-reporter before-build
 
 script:
-    - python -m pytest -s tests/
+    - python -m pytest --cov=theia --cov-report xml:coverage.xml -s tests/
 
 after_script:
     - ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
