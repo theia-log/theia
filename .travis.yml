@@ -12,8 +12,16 @@ services:
 install:
     - pip install -r requirements.txt
 
+before_script:
+    - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+    - chmod +x ./cc-test-reporter
+    - ./cc-test-reporter before-build
+
 script:
     - python -m pytest -s tests/
+
+after_script:
+    - ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
 
 after_success:
     - if [ "${TRAVIS_PULL_REQUEST}" == "false" ] && [ "${TRAVIS_BRANCH}" == "master" ]; then docker build -t theialog/theia:latest -f docker/Dockerfile . && echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin && docker push theialog/theia:latest ; fi
