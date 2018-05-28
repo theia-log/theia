@@ -1,5 +1,15 @@
 # theia
+
+[![Build Status](https://travis-ci.org/theia-log/theia.svg?branch=master)](https://travis-ci.org/theia-log/theia)
+[![Maintainability](https://api.codeclimate.com/v1/badges/ff2ef675417026a05721/maintainability)](https://codeclimate.com/github/theia-log/theia/maintainability)
+[![Test Coverage](https://api.codeclimate.com/v1/badges/ff2ef675417026a05721/test_coverage)](https://codeclimate.com/github/theia-log/theia/test_coverage)
+[![PyPI version](https://badge.fury.io/py/theia.svg)](https://badge.fury.io/py/theia)
+[![Documentation Status](https://readthedocs.org/projects/theia/badge/?version=latest)](https://theia.readthedocs.io/en/latest/?badge=latest)
+
 Simple and lightweight log aggregator
+
+
+
 
 # Introduction
 Theia is a log aggregator that collects logs from multiple log files usually on multiple machines and provides the log entries on a single endpoint. 
