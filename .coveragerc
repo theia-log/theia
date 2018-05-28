@@ -1,2 +1,5 @@
 [run]
 omit = tests/*
+
+[paths]
+src = theia
