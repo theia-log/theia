@@ -201,6 +201,12 @@ class RDBSEventStore(EventStore):
                 yield result
             page += 1
 
+    def close(self):
+        """Closes the store.
+
+        Does nothing in this implementation.
+        """
+        pass
 
 def match_any(matcher, values):
     """Check if the matcher matches *any* of the supplied values.

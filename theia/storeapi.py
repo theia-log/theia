@@ -72,6 +72,12 @@ class EventStore:
         """
         pass
 
+    @abstractmethod
+    def close(self):
+        """Close and cleanup the underlying store.
+        """
+        pass
+
 
 class EventStoreException(Exception):
     """General store error.

@@ -16,5 +16,5 @@ script:
     - python -m pytest -s tests/
 
 after_success:
-    - if [ "${TRAVIS_PULL_REQUEST}" == "false" ] && [ "${TRAVIS_BRANCH}" == "master" ]; then docker build -t theialog/theia:latest . && echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin && docker push theialog/theia:latest ; fi
+    - if [ "${TRAVIS_PULL_REQUEST}" == "false" ] && [ "${TRAVIS_BRANCH}" == "master" ]; then docker build -t theialog/theia:latest -f docker/Dockerfile . && echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin && docker push theialog/theia:latest ; fi
 
