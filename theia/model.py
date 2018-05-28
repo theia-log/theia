@@ -72,13 +72,11 @@ class Event:
                 matches = self.timestamp <= end
         if matches and content is not None:
             matches = _match(content, self.content)
-        if matches and tags and len(self.tags):
-            has_tag = False
+        if matches and tags:
             for tag in tags:
-                if tag in self.tags:
-                    has_tag = True
-            if not has_tag:
-                matches = False
+                if tag not in self.tags:
+                    matches = False
+                    break
 
         return matches
 
