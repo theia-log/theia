@@ -1,24 +1,47 @@
 """
-Client
-------
- - Can connect to a server (two-way channel)
+---------------------------
+Theia communication module.
+---------------------------
 
-Server
------
- - Can handle multiple connections from clients
- - Can route actions
+Defines classes for building theia servers and clients.
+
+Theia communication module is asynchronous and is built on top of asyncio loop.
+
+There are two main interfaces:
+
+* ``Server`` an async server handling and managing WebSocket connections from multiple clients.
+* ``Client`` an async client connection to a theia server.
+
+The interfaces are designed to work primarily with theia events and are thread-safe.
 """
 
 import asyncio
 import json
-import logging
+from logging import getLogger
 import websockets
-
 from theia.model import EventSerializer
+
+
+log = getLogger(__name__)
 
 
 class Client:
     """Client represents a client connection to a theia server.
+
+    :param loop: :mod:`asyncio` EventLoop to use for this client.
+    :param host: ``str``, theia server hostname.
+    :param port: ``int``, theia server port.
+    :param secure: ``bool``, is the connection secure.
+    :param path: ``str``, the request path - for example: ``"/live"``, ``"/events"`` etc.
+    :param recv: ``function``, receive handler. Called when a message is received from the
+        server. The handler has the following signature:
+    .. code-block:: python
+
+        def handler(message):
+            pass
+
+    where:
+        * ``message`` is the message received from the theia server.
     """
 
     def __init__(self, loop, host, port, secure=False, path=None, recv=None):
@@ -37,14 +60,24 @@ class Client:
         self.websocket = websocket
         self._is_open = True
         asyncio.ensure_future(self._recv(), loop=self.loop)
-        print('connected')
+        log.debug('[%s:%d]: connected', self.host, self.port)
 
     def connect(self):
+        """Connect to the remote server.
+        """
         self.loop.run_until_complete(self._open_websocket())
 
     def close(self, reason=None):
+        """Close the connection to the remote server.
+
+        :param reason: ``str``, the reason for disconnecting. If not given, a default ``"normal close"`` is
+        sent to the server.
+
+        """
+        reason = reason or 'normal close'
         self._is_open = False
-        self.websocket.close(code=1000, reason=reason or 'normal close')
+        self.websocket.close(code=1000, reason=reason)
+        log.debug('[%s:%d]: explicitly closed. Reason=%s', self.host, self.port, reason)
 
     def _get_ws_url(self):
         url = 'wss://' if self.secure else 'ws://'
@@ -56,18 +89,31 @@ class Client:
                 url += self.path
             else:
                 url += '/' + self.path
-        print('URL: %s' % url)
         return url
 
     def send(self, message):
-        print('call soon')
-        return self.loop.call_soon_threadsafe(self.call_send, message)
+        """Send a ``str`` message to the remote server.
 
-    def call_send(self, message):
+        :param message: ``str``, the message to be sent to the remote server.
+
+        Returns the :class:`asyncio.Handle` to the scheduled task for sending the
+        actual data.
+        """
+        return self.loop.call_soon_threadsafe(self._call_send, message)
+
+    def _call_send(self, message):
         asyncio.ensure_future(self.websocket.send(message), loop=self.loop)
-        print('scheduled to send')
 
     def send_event(self, event):
+        """Send an event to the remote server.
+
+        Serializes, then sends the serialized content to the remote server.
+
+        :param event: :class:`theia.model.Event`, the event to be send.
+
+        Returns the :class:`asyncio.Handle` to the scheduled task for sending the
+        actual data.
+        """
         message = self.serializer.serialize(event)
         return self.send(message)
 
@@ -78,13 +124,12 @@ class Client:
                 await self._process_message(message)
             except websockets.ConnectionClosed:
                 self._is_open = False
-                print('conn closed')
+                log.debug('[%s:%d] connection closed', self.host, self.port)
             # pylint: disable=broad-except
             # General case
             except Exception as e:
-                print(type(e))
                 self._is_open = False
-                logging.exception(e)
+                log.exception(e)
 
     async def _process_message(self, message):
         if self.recv_handler:
@@ -104,7 +149,7 @@ class wsHandler:
                 hnd(self.ws, self.path)
             # pylint: disable=broad-except
             except Exception as ex:
-                logging.debug(ex)
+                log.debug(ex)
 
     def add_close_handler(self, hnd):
         self.close_handlers.append(hnd)
@@ -134,14 +179,15 @@ class Server:
                 resp = await self._process_req(path, message, websocket)
                 if resp is not None:
                     await websocket.send(str(resp))
-                print('Request handled. Server started: ', self._started)
         except websockets.ConnectionClosed:
             self._remove_websocket(websocket)
-            print('Closing websocket connection:', websocket)
+            log.debug('[Server:%s:%d] Closing websocket connection: %s', self.host, self.port, websocket)
         except Exception as e:
             self._remove_websocket(websocket)
             print('Closing websocket connection because of unknown error:', websocket)
-            logging.exception(e)
+            log.error('[Server:%s:%d] Closing websocket connection because of unknown error: %s',
+                      self.host, self.port, websocket)
+            log.exception(e)
 
     def _remove_websocket(self, websocket):
         # self.websockets.remove(websocket)
@@ -167,7 +213,7 @@ class Server:
                 # pylint: disable=broad-except
                 # Intended to be broad as it handles generic action
                 except Exception as e:
-                    logging.exception(e)
+                    log.exception(e)
                     return json.dumps({"error": str(e)})
                 break
         return resp
