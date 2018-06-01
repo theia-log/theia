@@ -4,8 +4,9 @@ import asyncio
 from datetime import datetime
 from unittest import mock
 from websockets import WebSocketClientProtocol as WebSocket
-from theia.collector import LiveFilter, Live
+from theia.collector import LiveFilter, Live, Collector
 from theia.model import Event, EventSerializer
+from theia.storeapi import EventStore
 
 
 def test_live_filter_match():
@@ -105,3 +106,105 @@ def test_live_pipeline(m_serialize, m_send):
     loop.run_forever()
 
     assert len(filtered) == 3
+
+
+def test_create_collector():
+    store = EventStore()
+    coll = Collector(store=store, hostname="127.0.0.1", port=1122)
+    
+    assert coll.hostname == "127.0.0.1"
+    assert coll.port == 1122
+    assert coll.parser is not None
+    assert coll.serializer is not None
+    assert coll.live is not None
+
+
+def test_run_collector():
+    from time import sleep
+    from threading import Thread
+    store = EventStore()
+    coll = Collector(store=store, hostname="127.0.0.1", port=1122)
+    
+    def do_run():
+        print('coll.run()')
+        coll.run()
+        print('coll.run() end')
+    
+    t = Thread(target=do_run)
+    t.start()
+    sleep(1)
+    
+    assert coll.store_loop is not None
+    assert coll.server_loop is not None
+    
+    coll.store_loop.call_soon_threadsafe(coll.store_loop.stop)
+    coll.server_loop.call_soon_threadsafe(coll.server_loop.stop)
+    print('waiting for threads to complete...')
+    t.join()
+
+
+def test_run_and_stop_collector():
+    from time import sleep
+    from threading import Thread
+    store = EventStore()
+    coll = Collector(store=store, hostname="127.0.0.1", port=1122)
+    
+    def do_run():
+        print('coll.run()')
+        coll.run()
+        print('coll.run() end')
+    
+    t = Thread(target=do_run)
+    t.start()
+    sleep(1)
+    
+    assert coll.store_loop is not None
+    assert coll.server_loop is not None
+    
+    coll.stop()
+    print('waiting for threads to complete...')
+    t.join()
+
+
+@mock.patch.object(EventStore, 'save')
+def test_collect_events(m_save):
+    from time import sleep
+    from threading import Thread
+    
+    stored_events = []
+    
+    def save_event(event):
+        stored_events.append(event)
+    
+    m_save.side_effect = save_event
+    
+    ser = EventSerializer()
+    store = EventStore()
+    coll = Collector(store=store, hostname="127.0.0.1", port=1122)
+    
+    def do_run():
+        coll.run()
+    
+    t = Thread(target=do_run)
+    t.start()
+    sleep(1)
+    
+    assert coll.store_loop is not None
+    assert coll.server_loop is not None
+    
+    coll._on_event('/event', ser.serialize(Event(id='001',
+                                                 timestamp=10,
+                                                 tags=['1','2'],
+                                                 source='src1',
+                                                 content='event 1')), None, None)
+    coll._on_event('/event', ser.serialize(Event(id='002',
+                                                 timestamp=20,
+                                                 tags=['1','2', '3'],
+                                                 source='src2',
+                                                 content='event 2')), None, None)
+    
+    coll.stop()
+    print('waiting for threads to complete...')
+    t.join()
+    
+    assert len(stored_events) == 2

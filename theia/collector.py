@@ -134,6 +134,7 @@ class Collector:
         self._setup_store()
         self._setup_server()
         self.store_thread.join()
+        self.server_thread.join()
 
     def stop(self):
         """Stop the collector server.
