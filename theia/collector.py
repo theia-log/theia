@@ -1,4 +1,9 @@
-"""Log aggregator collector.
+"""
+------------------------
+Log aggregator collector
+------------------------
+
+The log aggregator collector server imlementation.
 """
 import asyncio
 from io import BytesIO
@@ -19,9 +24,8 @@ class LiveFilter:
 
     Holds a single criteria to filter events by.
 
-    Args:
-        ws(WebSocket) - reference to the web socoket instance.
-        criteria(dict) - dict holding criteria values.
+    :param ws: :class:`websockets.WebSocketClientProtocol`, reference to the web socket instance.
+    :param criteria: ``dict``,  dict holding criteria values.
     """
 
     ALLOWED_CRITERIA = {'id': str, 'source': str,
@@ -43,11 +47,10 @@ class LiveFilter:
     def match(self, event):
         """Matches an event to the criteria of this filter.
 
-        Args:
-            event(Event) - the event to match.
+        :param event: :class:`theia.model.Event`, the event to match.
 
         Returns:
-            match(bool) - True if the event matches the criteria, otherwise False.
+            match(``bool``), True if the event matches the criteria, otherwise False.
         """
 
         return event.match(**self.criteria)
@@ -59,8 +62,7 @@ class Live:
     Each event is passed through the live event pipeline and matched to the
     LiveFilter filters.
 
-    Args:
-        serializer(theia.model.Serializer) - event serializer.
+    :param serializer: :class:`theia.model.Serializer`, event serializer.
     """
 
     def __init__(self, serializer):
@@ -70,8 +72,7 @@ class Live:
     def add_filter(self, lfilter):
         """Adds new filter to the pipeline.
 
-        Args:
-            lfilter(LiveFilter) - the filter to add to the pipeline.
+        :param lfilter: :class:`LiveFilter`, the filter to add to the pipeline.
         """
         self.filters[lfilter.ws] = lfilter
 
@@ -80,8 +81,7 @@ class Live:
 
         The event will be matched against all filters in this pipeline.
 
-        Args:
-            event(theia.model.Event): the event to be pipelined.
+        :param event: :class:`theia.model.Event`, the event to be pipelined.
         """
         for ws, live_filter in self.filters.items():
             if live_filter.match(event):
@@ -105,10 +105,9 @@ class Collector:
     Collects the events, passes them down the live pipe filters and stores them
     in the event store.
 
-    Args:
-        store(theia.storeapi.Store): store instance
-        hostame(str): server hostname. Default is '0.0.0.0'.
-        port(int: server port. Default is 4300.
+    :param store: :class:`theia.storeapi.Store`, store instance
+    :param hostame: ``str``, server hostname. Default is '0.0.0.0'.
+    :param port: ``int``, server port. Default is 4300.
     """
 
     # pylint: disable=too-many-instance-attributes
@@ -192,8 +191,6 @@ class Collector:
         self.store.save(event)
         try:
             asyncio.run_coroutine_threadsafe(self.live.pipe(event), self.server_loop)
-            #task = self.server_loop.create_task(self.live.pipe(event))
-            #self.server_loop.call_soon_threadsafe(task)
         except Exception as e:
             log.error('Error in pipe: %s (event: %s)', e, event)
 
