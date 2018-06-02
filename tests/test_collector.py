@@ -9,6 +9,9 @@ from theia.model import Event, EventSerializer
 from theia.storeapi import EventStore
 
 
+_WAIT_TIME = 0.3
+
+
 def test_live_filter_match():
     """Test live filter events matching.
     """
@@ -132,7 +135,7 @@ def test_run_collector():
     
     t = Thread(target=do_run)
     t.start()
-    sleep(1)
+    sleep(_WAIT_TIME)
     
     assert coll.store_loop is not None
     assert coll.server_loop is not None
@@ -156,7 +159,7 @@ def test_run_and_stop_collector():
     
     t = Thread(target=do_run)
     t.start()
-    sleep(1)
+    sleep(_WAIT_TIME)
     
     assert coll.store_loop is not None
     assert coll.server_loop is not None
@@ -187,24 +190,148 @@ def test_collect_events(m_save):
     
     t = Thread(target=do_run)
     t.start()
-    sleep(1)
+    sleep(_WAIT_TIME)
     
     assert coll.store_loop is not None
     assert coll.server_loop is not None
     
-    coll._on_event('/event', ser.serialize(Event(id='001',
-                                                 timestamp=10,
-                                                 tags=['1','2'],
-                                                 source='src1',
-                                                 content='event 1')), None, None)
-    coll._on_event('/event', ser.serialize(Event(id='002',
-                                                 timestamp=20,
-                                                 tags=['1','2', '3'],
-                                                 source='src2',
-                                                 content='event 2')), None, None)
-    
+    coll.server_loop.call_soon_threadsafe(coll._on_event,
+                                          '/event',
+                                          ser.serialize(Event(id='001',
+                                                              timestamp=10,
+                                                              tags=['1','2'],
+                                                              source='src1',
+                                                              content='event 1')),
+                                          None,
+                                          None)
+    coll.server_loop.call_soon_threadsafe(coll._on_event,
+                                          '/event',
+                                          ser.serialize(Event(id='002',
+                                                              timestamp=20,
+                                                              tags=['1','2', '3'],
+                                                              source='src2',
+                                                              content='event 2')),
+                                          None,
+                                          None)
+    sleep(_WAIT_TIME)
     coll.stop()
     print('waiting for threads to complete...')
     t.join()
-    
     assert len(stored_events) == 2
+
+
+@mock.patch.object(WebSocket, 'send')
+@mock.patch.object(EventStore, 'save')
+def test_collect_and_filter_events(m_save, m_send):
+    from time import sleep
+    from threading import Thread
+    
+    stored_events = []
+    
+    def save_event(event):
+        stored_events.append(event)
+    
+    send_messages = []
+    
+    def send_ws_message(message):
+        send_messages.append(message)
+    
+    m_save.side_effect = save_event
+    m_send.side_effect = send_ws_message
+    
+    ser = EventSerializer()
+    store = EventStore()
+    coll = Collector(store=store, hostname="127.0.0.1", port=1122)
+    
+    def do_run():
+        coll.run()
+    
+    t = Thread(target=do_run)
+    t.start()
+    sleep(_WAIT_TIME)
+    
+    assert coll.store_loop is not None
+    assert coll.server_loop is not None
+    
+    # Register filter
+    
+    coll.server_loop.call_soon_threadsafe(coll._add_live_filter,
+                                          '/live',
+                                          '{"tags": ["3"]}',
+                                          WebSocket(),
+                                          None)
+    
+    
+    coll.server_loop.call_soon_threadsafe(coll._on_event,
+                                          '/event',
+                                          ser.serialize(Event(id='001',
+                                                              timestamp=10,
+                                                              tags=['1','2'],
+                                                              source='src1',
+                                                              content='event 1')),
+                                          None,
+                                          None)
+    coll.server_loop.call_soon_threadsafe(coll._on_event,
+                                          '/event',
+                                          ser.serialize(Event(id='002',
+                                                              timestamp=20,
+                                                              tags=['1','2', '3'],
+                                                              source='src2',
+                                                              content='event 2')),
+                                          None,
+                                          None)
+    sleep(_WAIT_TIME)
+    coll.stop()
+    print('waiting for threads to complete...')
+    t.join()
+    assert len(stored_events) == 2
+    assert len(send_messages) == 1
+
+
+@mock.patch.object(WebSocket, 'send')
+@mock.patch.object(EventStore, 'search')
+def test_find_events(m_search, m_send):
+    from time import sleep
+    from threading import Thread
+    
+    events = [Event(id='ev-1', timestamp=10, tags=['t-1'], source='s-1', content='c-1'),
+              Event(id='ev-2', timestamp=20, tags=['t-1'], source='s-1', content='c-2'),
+              Event(id='ev-3', timestamp=30, tags=['t-1'], source='s-1', content='c-3')]
+    
+    ws_messages = []
+    
+    async def send_ws_message(msg):
+         ws_messages.append(msg)
+    
+    m_send.side_effect = send_ws_message
+    
+    def yield_events(*args, **kwargs):
+        for event in events:
+            yield event
+    
+    m_search.side_effect = yield_events
+    
+    store = EventStore()
+    coll = Collector(store=store, hostname="127.0.0.1", port=1122)
+    
+    def do_run():
+        coll.run()
+    
+    t = Thread(target=do_run)
+    t.start()
+    sleep(_WAIT_TIME)
+    
+    assert coll.store_loop is not None
+    assert coll.server_loop is not None
+    
+    coll.server_loop.call_soon_threadsafe(coll._find_event,
+                                          '/find',
+                                          '{"tags": ["c-1"], "start": 1}',
+                                          WebSocket(),
+                                          None)
+    
+    sleep(_WAIT_TIME)
+    coll.stop()
+    t.join()
+    
+    assert len(ws_messages) == 3

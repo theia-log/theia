@@ -130,13 +130,10 @@ def binary_search(datafiles, ts):
 
     while True:
         mid = (end + start) // 2
-        #print(start, end, mid)
         if datafiles[mid].end >= ts:
-            # print('end=mid')
             end = mid
         else:
             start = mid
-            # print('start=mid')
         if end - start <= 1:
             if ts > datafiles[start].end and ts < datafiles[end].start:
                 return None
@@ -175,6 +172,11 @@ class FileIndex:
 
     def find(self, ts_from, ts_to):
         idx = binary_search(self.files, ts_from)
+        if idx is None and self.files:
+            if self.files[0].start >= ts_from:
+                idx = 0
+            elif self.files[-1].end <= ts_from:
+                idx = len(self.files) - 1
         if idx is not None:
             found = []
             while idx < len(self.files):

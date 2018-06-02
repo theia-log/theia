@@ -83,7 +83,6 @@ class Live:
         Args:
             event(theia.model.Event): the event to be pipelined.
         """
-
         for ws, live_filter in self.filters.items():
             if live_filter.match(event):
                 try:
@@ -193,6 +192,8 @@ class Collector:
         self.store.save(event)
         try:
             asyncio.run_coroutine_threadsafe(self.live.pipe(event), self.server_loop)
+            #task = self.server_loop.create_task(self.live.pipe(event))
+            #self.server_loop.call_soon_threadsafe(task)
         except Exception as e:
             log.error('Error in pipe: %s (event: %s)', e, event)
 
