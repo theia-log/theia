@@ -19,9 +19,7 @@ script:
     - python -m pytest --cov=theia --cov-report xml:coverage-report.xml -s tests/
 
 after_script:
-    - if [ -f "coverage.xml" ]; then sed 's|<source>.*/theia</source>|<source>theia</source>|' coverage-report.xml > coverage.xml; fi && ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
-    - cat coverage-report.xml
-    - cat coverage.xml
+    - if [ -f "coverage-report.xml" ]; then sed 's|<source>.*/theia</source>|<source>theia</source>|' coverage-report.xml > coverage.xml; fi && ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
 
 after_success:
     - if [ "${TRAVIS_PULL_REQUEST}" == "false" ] && [ "${TRAVIS_BRANCH}" == "master" ]; then docker build -t theialog/theia:latest -f docker/Dockerfile . && echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin && docker push theialog/theia:latest ; fi
