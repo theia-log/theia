@@ -32,6 +32,7 @@ def get_parser(subparsers):
                         metavar='FORMAT_STRING', help='Event output format string. Available properties are: id, tags, source, timestamp and content.')
     parser.add_argument('-T', '--format-timestamp', dest='o_ts_format', default='%Y-%m-%d %H:%M:%S.%f%Z',
                         metavar='DATE_FORMAT_STRING', help='Timestamp strftime compatible format string')
+    parser.add_argument('--close-timeout', dest='close_timeout', default=10, type=int, help='Time  (in milliseconds) given to the connecting websocket to actually close the connection after receiving close frame form the server. The default is 10ms.')
 
 
 def format_event(ev, fmt, datefmt=None):
@@ -95,7 +96,13 @@ def run_query(args):
         result = query.live(cf, printev)
     else:
         result = query.find(cf, printev)
-
+    
+    def clean_stop(*arg):
+        # delay the stop a bit, give it chance to actually close the loop
+        loop.call_later(args.close_timeout/1000, loop.stop)
+    
+    result.when_closed(clean_stop)
+    
     loop.add_signal_handler(signal.SIGHUP, loop.stop)
     loop.add_signal_handler(signal.SIGINT, loop.stop)
     loop.add_signal_handler(signal.SIGTERM, loop.stop)

@@ -25,6 +25,9 @@ from theia.model import EventSerializer
 log = getLogger(__name__)
 
 
+_WAIT_TIME = 0.1
+
+
 class Client:
     """Client represents a client connection to a theia server.
 
@@ -54,6 +57,7 @@ class Client:
         self.serializer = EventSerializer()
         self.websocket = None
         self._is_open = False
+        self._close_handlers = []
 
     async def _open_websocket(self):
         websocket = await websockets.connect(self._get_ws_url(), loop=self.loop)
@@ -122,18 +126,33 @@ class Client:
             try:
                 message = await self.websocket.recv()
                 await self._process_message(message)
-            except websockets.ConnectionClosed:
-                self._is_open = False
+            except websockets.ConnectionClosed as wse:
+                self._closed(wse.code, wse.reason)
                 log.debug('[%s:%d] connection closed', self.host, self.port)
             # pylint: disable=broad-except
             # General case
             except Exception as e:
-                self._is_open = False
                 log.exception(e)
+                self._closed(1006, reason=str(e))
 
     async def _process_message(self, message):
         if self.recv_handler:
             self.recv_handler(message)
+
+    def on_close(self, handler):
+        self._close_handlers.append(handler)
+
+    
+    def _closed(self, code=1000, reason=None):
+        self._is_open = False
+        for hnd in self._close_handlers:
+            try:
+                hnd(self.websocket, code, reason)
+            except Exception as e:
+                log.debug(e)
+    
+    def is_open(self):
+        return self._is_open
 
 
 class wsHandler:
@@ -143,7 +162,7 @@ class wsHandler:
         self.path = path
         self.close_handlers = []
 
-    def trigger(self):
+    def trigger(self, websocket):
         for hnd in self.close_handlers:
             try:
                 hnd(self.ws, self.path)
@@ -164,6 +183,7 @@ class Server:
         self.websockets = {}
         self._started = False
         self.actions = {}
+        self._stop_timeout = 10
 
     def on_action(self, path, cb):
         actions = self.actions.get(path)
@@ -172,7 +192,7 @@ class Server:
         actions.append(cb)
 
     async def _on_client_connection(self, websocket, path):
-        self.websockets[websockets] = wsHandler(websocket, path)
+        self.websockets[websocket] = wsHandler(websocket, path)
         try:
             while self._started:
                 message = await websocket.recv()
@@ -184,7 +204,6 @@ class Server:
             log.debug('[Server:%s:%d] Closing websocket connection: %s', self.host, self.port, websocket)
         except Exception as e:
             self._remove_websocket(websocket)
-            print('Closing websocket connection because of unknown error:', websocket)
             log.error('[Server:%s:%d] Closing websocket connection because of unknown error: %s',
                       self.host, self.port, websocket)
             log.exception(e)
@@ -225,4 +244,29 @@ class Server:
         self._started = True
 
     def stop(self):
-        pass
+        from time import sleep
+        wss = [ws for ws,_ in self.websockets.items()]
+        semaphore = {'value': len(wss)}
+        
+        for ws in wss:
+            try:
+                self._remove_websocket(ws)
+            except Exception as exc:
+                log.exception(exc)
+            asyncio.run_coroutine_threadsafe(self._send_close(semaphore, ws, 'server stop'), self.loop)
+        log.debug('Server notified to stop')
+        total_wait = 0
+        while semaphore['value']:
+            sleep(_WAIT_TIME)
+            total_wait += _WAIT_TIME
+            if total_wait > self._stop_timeout:
+                break
+        if semaphore['value']:
+            log.warn('Stop timeout reached before all connections were closed. Server will stop anyway')
+        else:
+            log.debug('All done. Server stopped.')
+
+    async def _send_close(self, semaphore, websocket, reason=None):
+        await websocket.close(code=1000, reason=reason)
+        semaphore['value'] -= 1
+

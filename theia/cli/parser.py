@@ -9,5 +9,8 @@ def get_parent_parser(name, desc=''):
     parser.add_argument('-H', '--host', help='Hostname to bind to',
                         default='localhost', dest='server_host')
     parser.add_argument('-P', '--port', help='Listen on port', default=6433)
+    
+    parser.add_argument('--verbose', dest='verbose', action='store_true',
+                        help='Verbose output.')
 
     return parser

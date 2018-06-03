@@ -18,6 +18,11 @@ if args.version:
     print('theia', version)
     exit(0)
 
+if args.verbose:
+    from logging import basicConfig, DEBUG
+    basicConfig(level=DEBUG)
+
+
 if args.command == 'watch':
     run_watcher(args)
 elif args.command == 'collect':
