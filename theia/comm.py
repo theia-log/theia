@@ -75,7 +75,7 @@ class Client:
         """Close the connection to the remote server.
 
         :param reason: ``str``, the reason for disconnecting. If not given, a default ``"normal close"`` is
-        sent to the server.
+            sent to the server.
 
         """
         reason = reason or 'normal close'
@@ -140,9 +140,30 @@ class Client:
             self.recv_handler(message)
 
     def on_close(self, handler):
+        """Add close handler.
+
+        The handles is called when the client connection is closed either by the client
+        or by the server.
+
+        :param handler: ``function``, the handler callback. The callback prototype
+            looks like so:
+        .. code-block:: python
+
+            def callback(websocket, code, reason):
+                pass
+
+        where:
+
+        * ``websocket`` :class:`websockets.WebSocketClientProtocol` is the underlying
+            websocket.
+        * ``code`` ``int`` is the code received when the connection was closed. Check
+            out the `WebSocket specification`_ for the list of codes and their meaning.
+        * ``reason`` ``str`` is the reason for closing the connection.
+
+        .. _WebSocket specification: https://tools.ietf.org/html/rfc6455#section-7.4
+        """
         self._close_handlers.append(handler)
 
-    
     def _closed(self, code=1000, reason=None):
         self._is_open = False
         for hnd in self._close_handlers:
@@ -150,19 +171,39 @@ class Client:
                 hnd(self.websocket, code, reason)
             except Exception as e:
                 log.debug(e)
-    
+
     def is_open(self):
+        """Check if the client connection is open.
+
+        Returns ``True`` if the client connection is open, otherwise ``False``.
+        """
         return self._is_open
 
 
 class wsHandler:
+    """Wrapper for an incoming websocket connection.
 
+    Used primarily with the :class:`Server` implementation in the client connections
+    life-cycle management.
+
+    :param websocket: :class:`websockets.WebSocketClientProtocol`, the underlying
+        websocket connection.
+    :param path: ``str``, the request path of the websocket connection.
+
+    **Note**: This class is mainly used internally and as such it is a subject of
+    chnages in its API.
+    """
     def __init__(self, websocket, path):
         self.ws = websocket
         self.path = path
         self.close_handlers = []
 
     def trigger(self, websocket):
+        """Triggers the close handlers for this websocket.
+
+        :param websocket: :class:`websockets.WebSocketClientProtocol`, the underlying
+            websocket connection.
+        """
         for hnd in self.close_handlers:
             try:
                 hnd(self.ws, self.path)
@@ -171,11 +212,36 @@ class wsHandler:
                 log.debug(ex)
 
     def add_close_handler(self, hnd):
+        """Register a close handler for this connection.
+
+        :param hnd: ``function``, the close handler callback. The callback receives
+            two parameters:
+
+            * ``ws`` (:class:`websockets.WebSocketClientProtocol`), the underlying websocket
+                connection.
+            * ``path`` (``str``), the request path of the websocket.
+        """
         self.close_handlers.append(hnd)
 
 
 class Server:
+    """Listens for and manages multiple client connections.
 
+    The server is based on :mod:`asyncio` event loop. It manages the websocket
+    connections comming from multiple clients based on the path in the websocket
+    request connection.
+
+    Provides a way to register a callback for notifying when a client connects to
+    a particular endpoint (path), and also a way to register a callback for when
+    the client disconnects.
+
+    Instances of this class are thread-safe.
+
+    :param loop: :class:`asyncio.BaseEventLoop`, the event loop.
+    :param host: ``str``, the hostname to bind to when listening fo incoming
+        connections.
+    :param port: ``int``, the port to listen on.
+    """
     def __init__(self, loop, host='localhost', port=4479):
         self.loop = loop
         self.host = host
@@ -186,6 +252,36 @@ class Server:
         self._stop_timeout = 10
 
     def on_action(self, path, cb):
+        """Register a callback to listen for messages from clients that connected
+        to this specific entrypoint (path).
+
+        The callback will be called whenever a new message is received from the client
+        on this ``path``.
+
+        If multiple callbacks are registered on the same action, then they are called
+        one by one in the same order as registered. The response from the callbacks is
+        chained between the subsequent calls.
+
+        :param path: ``str``, the request path of the incoming websocket connection.
+        :param cb: ``function``, the callback to be called when a message is received
+            from the client on this path.
+            The callback handler looks like this:
+        .. code-block:: python
+
+            def callback(path, message, websocket, resp):
+                return resp
+
+        where:
+
+        * ``path`` ``str``, the path on which the message was received.
+        * ``message`` ``str``, the messge received from the websocket connection.
+        * ``websocket`` :class:`websockets.WebSocketClientProtocol`, the underlying
+            websocket.
+        * ``resp`` ``str``, the response from the previous action registered on this
+            same action
+
+        The callback must return ``str`` response or ``None``.
+        """
         actions = self.actions.get(path)
         if not actions:
             actions = self.actions[path] = []
@@ -216,6 +312,26 @@ class Server:
             hnd.trigger(websocket)
 
     def on_websocket_close(self, websocket, cb):
+        """Register a close callback for this websocket.
+
+        :param websocket: :class:`websockets.WebSocketClientProtocol`, the websocket
+            to watch for closing.
+        :param cb: ``function``, the callback to be called when the ``websocket``
+            is closed. The callback should look like this:
+        .. code-block:: python
+
+            def callback(ws, path):
+                pass
+
+        where:
+
+        * ``ws`` (:class:`websockets.WebSocketClientProtocol`), the underlying websocket
+                connection.
+        * ``path`` (``str``), the request path of the websocket.
+
+        This method returns ``True`` if the callback was added; ``False`` if the
+        websocket is not managed by this :class:`Server` instance.
+        """
         hnd = self.websockets.get(websocket)
         if hnd is not None:
             hnd.add_close_handler(cb)
@@ -238,16 +354,26 @@ class Server:
         return resp
 
     def start(self):
+        """Starts the server.
+
+        This call blocks until the server is started or an error occurs.
+        """
         start_server = websockets.serve(self._on_client_connection,
                                         self.host, self.port, loop=self.loop)
         self.loop.run_until_complete(start_server)
         self._started = True
 
     def stop(self):
+        """Stops the server.
+
+        Closes all client websocket connections then shuts down the server.
+
+        This operation blocks until the server stops or an error occurs.
+        """
         from time import sleep
-        wss = [ws for ws,_ in self.websockets.items()]
+        wss = [ws for ws, _ in self.websockets.items()]
         semaphore = {'value': len(wss)}
-        
+
         for ws in wss:
             try:
                 self._remove_websocket(ws)
@@ -262,11 +388,10 @@ class Server:
             if total_wait > self._stop_timeout:
                 break
         if semaphore['value']:
-            log.warn('Stop timeout reached before all connections were closed. Server will stop anyway')
+            log.warning('Stop timeout reached before all connections were closed. Server will stop anyway')
         else:
             log.debug('All done. Server stopped.')
 
     async def _send_close(self, semaphore, websocket, reason=None):
         await websocket.close(code=1000, reason=reason)
         semaphore['value'] -= 1
-
