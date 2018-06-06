@@ -132,13 +132,11 @@ class Event:
         return matches
 
     def _match_tags(self, tags):
-        matches = True
         if tags:
             for tag in tags:
                 if tag not in self.tags:
-                    matches = False
-                    break
-        return matches
+                    return False
+        return True
 
     def _match_content(self, content):
         if not content:
