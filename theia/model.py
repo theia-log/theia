@@ -13,6 +13,23 @@ import re
 
 
 EventPreamble = namedtuple('EventPreamble', ['total', 'header', 'content'])
+"""A preamble to an :class:`Event`.
+
+The preamble is present only in the serialized representation of an event and
+holds the information about the size of the event and its parts.
+"""
+
+EventPreamble.total.__doc__ = """
+    ``int``, the size of the serialized event in bytes.
+"""
+
+EventPreamble.header.__doc__ = """
+    ``int``, the size of the serialized event header in bytes.
+"""
+
+EventPreamble.content.__doc__ = """
+    ``int``, the size of the serialized event content in bytes.
+"""
 
 
 class Header:
@@ -64,7 +81,7 @@ class Event:
         UUID version 4 (random UUID) would be a good choice for ``id``.
     :param source: ``str``, the source of the event. It usually is the name of the
         monitored file, but if the event does not originate from a file, it should be
-        set to the name of the proecss/system/entity that generated the event.
+        set to the name of the process, system or entity that generated the event.
     :param timestamp: ``float``, time when the event occured in seconds (like UNIX
         time). The value is a floating point number with nanoseconds precission. If
         no value is given, then the current time will be used.
@@ -110,9 +127,9 @@ class Event:
         Returns ``True`` if this :class:`Event` matches the criteria, otherwise ``False``.
         """
         return all([self._match_header_id_and_source(id, source),
-                   self._match_timestamp(start, end),
-                   self._match_tags(tags),
-                   self._match_content(content)])
+                    self._match_timestamp(start, end),
+                    self._match_tags(tags),
+                    self._match_content(content)])
 
     def _match_header_id_and_source(self, id, source):
         matches = True
@@ -158,12 +175,13 @@ class EventSerializer:
     This serializes the :class:`Event` in a plain text representation of the Event.
     The serialized text is encoded in UTF-8 and the actual ``bytes`` are returned.
 
-    The representation consists of three parts: heading, header and content.
-    The heading is the first line of every event and has this format:
+    The representation consists of three parts: preamble, header and content.
+    The preamble is the first line of every event and has this format:
 
         event: <total_size> <header_size> <content_size>
 
     where:
+
     * ``total_size`` is the total size of the Event (after the heading) in bytes.
     * ``header_size`` is the size of the header in bytes.
     * ``content_size`` is the size of the content (after the Header) in bytes.
@@ -174,7 +192,11 @@ class EventSerializer:
 
     The content starts after the final header and is separated by a newline.
 
-    Here is an example of a fully serialized :class:`Event`:
+    Here is an example of a fully serialized :class:`Event` (Python's ``bytes``)::
+
+        b'event: 155 133 22\\nid:331c531d-6eb4-4fb5-84d3-ea6937b01fdd\\ntimestamp: 1509989630.6749051\\nsource:/dev/sensors/door1-sensor\\ntags:sensors,home,doors,door1\\nDoor has been unlocked\\n'
+
+    or as a textual representation::
 
         event: 155 133 22
         id:331c531d-6eb4-4fb5-84d3-ea6937b01fdd
@@ -183,11 +205,27 @@ class EventSerializer:
         tags:sensors,home,doors,door1
         Door has been unlocked
 
+    **Note** that the :class:`EventSerializer` adds a trailing newline (``\\n``) at
+    the end.
+
+    The serializer constructor takes the encoding as an argument. By default "utf-8"
+    is used.
+
+    :param encoding: ``str``, the encoding of the serialized string. Default ``utf-8``.
+
     """
     def __init__(self, encoding='utf-8'):
         self.encoding = encoding
 
     def serialize(self, event):
+        """Serializes an :class:`Event`.
+
+        See :class:`EventSerializer` for details on the serialization format.
+
+        :param event: :class:`Event`, the event to be serialized.
+
+        Returns the serialized event as ``bytes``.
+        """
         event_str = ''
         hdr = self._serialize_header(event)
         hdr_size = len(hdr.encode(self.encoding))
@@ -210,11 +248,41 @@ class EventSerializer:
 
 
 class EventParser:
+    """Parses an incoming bytes stream into an :class:`Event`.
 
+    Offers methods for parsing parts of an :class:`Event` or parsing the full
+    event from the incoming :class:`io.BytesIO` stream.
+
+    The stream will be decoded before converting it to ``str``. By default the
+    parser assumes that the stream is ``utf-8`` encoded.
+
+    :param encoding: ``str``, the encoding to be ued for decoding the stream bytes.
+        The default is ``utf-8``.
+
+    """
     def __init__(self, encoding='utf-8'):
         self.encoding = encoding
 
     def parse_header(self, hdr_size, stream):
+        """Parses the :class:`Event` header into a :class:`Header` object from the
+        incoming stream.
+
+        First ``hdr_size`` bytes are read from the :class:`io.BytesIO` stream and
+        are decoded to ``str``.
+
+        Then, the parser parses each line by splitting it by the first colon (``:``).
+        The first part is ued to determine the :class:`Header` property. The part
+        after the colon is the propery value.
+
+        :param hdr_size: ``int``, the size of the header in bytes. See
+            :meth:`EventParser.parse_preamble` on how to determine the header size
+            in bytes.
+        :param stream: :class:`io.BytesIO`, the incoming stream to parse.
+
+        Returns the parsed :class:`Header` for the event.
+
+        Raises :class:`Exception` if an unknown property is encountered in the header.
+        """
         hbytes = stream.read(hdr_size)
         if len(hbytes) != hdr_size:
             raise Exception('Invalid read size from buffer. The stream is either unreadable \
@@ -246,6 +314,25 @@ class EventParser:
         return header
 
     def parse_preamble(self, stream):
+        """Parses the event preamble from the incoming stream into a :class:`EventPreamble`.
+
+        The event preamble is a single line read from the stream with the following
+        structure::
+
+            <total_size> <header_size> <content_size>
+
+        where:
+
+        * ``total_size`` is the total size of the Event (after the heading) in bytes.
+        * ``header_size`` is the size of the header in bytes.
+        * ``content_size`` is the size of the content (after the Header) in bytes.
+
+        Note that the sizes are expressed in bytes.
+
+        :param stream: :class:`io.BytesIO`, the stream to parse.
+
+        Returns the parsed :class:`EventPreamble` from the incoming stream.
+        """
         pstr = stream.readline()
         if not pstr:
             raise EOFException()
@@ -262,6 +349,25 @@ class EventParser:
         return EventPreamble(total=int(values[0]), header=int(values[1]), content=int(values[2]))
 
     def parse_event(self, stream, skip_content=False):
+        """Parses an event from the incoming stream.
+
+        The parsing is done in two phases:
+
+        1. The preamble is parsed to determine the total size of the event and the
+            the size of the event header.
+        2. Then the actual event is read, either with or without the event content.
+
+        If ``skip_content`` is set to ``True``, then the actual content of the event
+        is not read. This is usefull in event readers that do matching of the event
+        header values, without wasting memory and performance for reading the content.
+        In this case, the event content will be set to ``None``.
+
+        :param stream: :class:`io.BytesIO`, the stream to parse from.
+        :param skip_content: ``bool``, whether to skip the fetching of the content and
+            to fetch only the :class:`Event` header. Default is ``False``.
+
+        Returns the parsed :class:`Event` from the incoming stream.
+        """
         preamble = self.parse_preamble(stream)
         header = self.parse_header(preamble.header, stream)
         content = None
@@ -281,4 +387,7 @@ class EventParser:
 
 
 class EOFException(Exception):
+    """Represents an error in parsing an :class:`Event` from an underlyign stream
+    that occurs when the end of stream is reached prematurely.
+    """
     pass
