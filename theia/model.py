@@ -109,9 +109,10 @@ class Event:
 
         Returns ``True`` if this :class:`Event` matches the criteria, otherwise ``False``.
         """
-        return all(self._match_header_id_and_source(id, source),
+        return all([self._match_header_id_and_source(id, source),
                    self._match_timestamp(start, end),
-                   self._match_tags(tags))
+                   self._match_tags(tags),
+                   self._match_content(content)])
 
     def _match_header_id_and_source(self, id, source):
         matches = True
@@ -138,6 +139,12 @@ class Event:
                     matches = False
                     break
         return matches
+
+    def _match_content(self, content):
+        if not content:
+            return True
+        return _match(content, self.content)
+
 
 def _match(pattern, value):
     """Match the value against a regular expression pattern.
