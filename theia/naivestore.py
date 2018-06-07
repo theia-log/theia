@@ -1,21 +1,65 @@
 """
-Provides:
-1. Atomic file write:
-  - May squash couple of events together
-  - It is asynchronous
-  - Small lock window when the rename of the file is done
-2. Store Reader
-  - per store file
+---------------------------------------
+Naive implementation of the Event Store
+---------------------------------------
 
-3. Store API:
-  - Store event
-  - Find event by ID
-  - Search Events by filter
+This module provides an implementation of the :class:`theia.storeapi.EventStore`
+that stores the events in plain-text files.
+
+The store writes to the files atomically, so there is no danger of leaving the
+files in an inconsistent state.
+
+The files in which the store keeps the events are plain text files that contain
+serialized events, encoded in UTF-8. The events are written sequentially. Plain
+text is chosen so that these files can be also be read and processed by other
+tools (such as grep). The events are kept in multiple files. Each file contains
+about a minute worth of events - all events that happened in that one minute time
+span. The name of the file is the time span: <first-event-timestamp>-<last-event-timestamp>.
+
+The naive store requires a root directory in which to store the events. Here is
+an example of usage of the store:
+.. code-block:: python
+
+    from theia.naivestore import NaiveEventStore
+    from theia.model import Event
+    from uuid import uuid4
+    from datetime import datetime
+    
+    store = NaiveEventStore(root_dir='./data')
+    
+    timestamp = datetime.now().timestamp()
+    
+    store.save(Event(id=uuid4(),
+                     source='test-example',
+                     timestamp=timestamp,
+                     tags=['example'],
+                     content='event 1'))
+    store.save(Event(id=uuid4(),
+                     source='test-example',
+                     timestamp=timestamp + 10,
+                     tags=['example'],
+                     content='event 2'))
+    store.save(Event(id=uuid4(),
+                     source='test-example',
+                     timestamp=timestamp + 20,
+                     tags=['example'],
+                     content='event 3'))
+    
+    # now let's search some events
+    
+    for ev in store.search(ts_start=timestamp + 5):
+        print('Found:', ev.content)
+
+would print:
+    
+    >> Found: event 2
+    >> Found: event 3
+
 """
 
 from tempfile import NamedTemporaryFile
 from io import BytesIO
-from threading import Lock, Thread
+from threading import RLock, Thread
 from shutil import move
 from os.path import join as join_paths, basename, dirname
 from os import listdir
@@ -88,7 +132,7 @@ class MemoryFile:
         self.name = name
         self.path = path
         self.buffer = BytesIO()
-        self.lock = Lock()
+        self.lock = RLock()
 
     def write(self, obj):
         try:
@@ -210,7 +254,7 @@ class NaiveEventStore(EventStore):
         self.serializer = EventSerializer()
         self.index = FileIndex(root_dir)
         self.open_files = {}
-        self.write_lock = Lock()
+        self.write_lock = RLock()
         self.flush_interval = flush_interval  # <=0 immediate, otherwise will flush periodically
         self.timer = None
         if flush_interval > 0:
