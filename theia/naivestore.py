@@ -18,39 +18,39 @@ span. The name of the file is the time span: <first-event-timestamp>-<last-event
 
 The naive store requires a root directory in which to store the events. Here is
 an example of usage of the store:
-.. code-block:: python
+    .. code-block:: python
 
-    from theia.naivestore import NaiveEventStore
-    from theia.model import Event
-    from uuid import uuid4
-    from datetime import datetime
-    
-    store = NaiveEventStore(root_dir='./data')
-    
-    timestamp = datetime.now().timestamp()
-    
-    store.save(Event(id=uuid4(),
-                     source='test-example',
-                     timestamp=timestamp,
-                     tags=['example'],
-                     content='event 1'))
-    store.save(Event(id=uuid4(),
-                     source='test-example',
-                     timestamp=timestamp + 10,
-                     tags=['example'],
-                     content='event 2'))
-    store.save(Event(id=uuid4(),
-                     source='test-example',
-                     timestamp=timestamp + 20,
-                     tags=['example'],
-                     content='event 3'))
-    
-    # now let's search some events
-    
-    for ev in store.search(ts_start=timestamp + 5):
-        print('Found:', ev.content)
+        from theia.naivestore import NaiveEventStore
+        from theia.model import Event
+        from uuid import uuid4
+        from datetime import datetime
+        
+        store = NaiveEventStore(root_dir='./data')
+        
+        timestamp = datetime.now().timestamp()
+        
+        store.save(Event(id=uuid4(),
+                         source='test-example',
+                         timestamp=timestamp,
+                         tags=['example'],
+                         content='event 1'))
+        store.save(Event(id=uuid4(),
+                         source='test-example',
+                         timestamp=timestamp + 10,
+                         tags=['example'],
+                         content='event 2'))
+        store.save(Event(id=uuid4(),
+                         source='test-example',
+                         timestamp=timestamp + 20,
+                         tags=['example'],
+                         content='event 3'))
+        
+        # now let's search some events
+        
+        for ev in store.search(ts_start=timestamp + 5):
+            print('Found:', ev.content)
 
-would print:
+would print::
     
     >> Found: event 2
     >> Found: event 3
