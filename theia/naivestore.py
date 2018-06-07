@@ -58,7 +58,7 @@ would print:
 """
 
 from tempfile import NamedTemporaryFile
-from io import BytesIO
+from io import BytesIO, SEEK_CUR
 from threading import RLock, Thread
 from shutil import move
 from os.path import join as join_paths, basename, dirname
@@ -82,12 +82,13 @@ class PeriodicTimer(Thread):
     def run(self):
         self.is_running = True
 
+        time.sleep(self.interval)
         while self.is_running:
-            time.sleep(self.interval)
             try:
                 self.action()
             except:
                 pass
+            time.sleep(self.interval)
 
     def cancel(self):
         self.is_running = False
@@ -102,22 +103,30 @@ class SequentialEventReader:
     def events(self):
         while True:
             try:
-                yield self.parser.parse_event(self.stream)
+                yield self._actual_read()
             except EOFException:
                 break
 
     def events_no_content(self):
         while True:
             try:
-                yield self.parser.parse_event(self.stream, skip_content=True)
+                yield self._actual_read(skip_content=True)
             except EOFException:
                 break
 
     def curr_event(self):
         try:
-            return self.parser.parse_event(self.stream)
+            return self._actual_read()
         except EOFException:
             return None
+
+    def _actual_read(self, skip_content=False):
+        data = self.parser.parse_event(self.stream, skip_content=skip_content)
+        try:
+            self.stream.seek(1, SEEK_CUR)
+        except:
+            pass
+        return data
 
     def __enter__(self):
         return self
@@ -215,7 +224,9 @@ class FileIndex:
         return None
 
     def find(self, ts_from, ts_to):
+        print('|idx| find:', ts_from, ts_to)
         idx = binary_search(self.files, ts_from)
+        print('|idx| find: idx=', idx, '; files=', self.files)
         if idx is None and self.files:
             if self.files[0].start >= ts_from:
                 idx = 0
@@ -225,7 +236,7 @@ class FileIndex:
             found = []
             while idx < len(self.files):
                 df = self.files[idx]
-                if df.start >= ts_from:
+                if df.end >= ts_from:
                     found.append(df)
                 if ts_to and df.end > ts_to:
                     break
@@ -244,6 +255,7 @@ class FileIndex:
         if df:
             self.files.append(df)
             self.files = sorted(self.files, key=lambda n: n.start)
+        print('|idx| added:', fname)
 
 
 class NaiveEventStore(EventStore):
@@ -299,7 +311,7 @@ class NaiveEventStore(EventStore):
                 self.open_files[df.path] = self._open_file(df)
             mf = self.open_files[df.path]
             mf.write(self.serializer.serialize(event))
-            mf.write('\n'.encode('utf-8'))
+            mf.write('\n'.encode(self.serialized.encoding))
             if self.flush_interval <= 0:
                 mf.flush()
         finally:
@@ -307,6 +319,7 @@ class NaiveEventStore(EventStore):
 
     def search(self, ts_start, ts_end=None, flags=None, match=None, order='asc'):
         data_files = self.index.find(ts_start, ts_end)
+        print('|naive| search: data_files:', data_files)
         if data_files:
             for data_file in data_files:
                 yield from self._search_data_file(data_file, ts_start, ts_end, flags, match, order == 'desc')
