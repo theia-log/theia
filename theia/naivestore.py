@@ -188,8 +188,6 @@ def binary_search(datafiles, ts):
         else:
             start = mid
         if end - start <= 1:
-            if ts > datafiles[start].end and ts < datafiles[end].start:
-                return None
             if datafiles[start].end >= ts:
                 return start
             else:
@@ -224,9 +222,7 @@ class FileIndex:
         return None
 
     def find(self, ts_from, ts_to):
-        print('|idx| find:', ts_from, ts_to)
         idx = binary_search(self.files, ts_from)
-        print('|idx| find: idx=', idx, '; files=', self.files)
         if idx is None and self.files:
             if self.files[0].start >= ts_from:
                 idx = 0
@@ -236,18 +232,20 @@ class FileIndex:
             found = []
             while idx < len(self.files):
                 df = self.files[idx]
-                if df.end >= ts_from:
+                if ts_to:
+                    if df.start > ts_to:
+                        break # hit the last
+                if df.start >= ts_from or df.end >= ts_from:
                     found.append(df)
-                if ts_to and df.end > ts_to:
-                    break
+
                 idx += 1
-            return found
+            return found if found else None
         return None
 
     def find_event_file(self, ts_from):
         idx = binary_search(self.files, ts_from)
         if idx is not None:
-            return self.files[-1]
+            return self.files[idx]
         return None
 
     def add_file(self, fname):
@@ -255,7 +253,6 @@ class FileIndex:
         if df:
             self.files.append(df)
             self.files = sorted(self.files, key=lambda n: n.start)
-        print('|idx| added:', fname)
 
 
 class NaiveEventStore(EventStore):
@@ -319,7 +316,6 @@ class NaiveEventStore(EventStore):
 
     def search(self, ts_start, ts_end=None, flags=None, match=None, order='asc'):
         data_files = self.index.find(ts_start, ts_end)
-        print('|naive| search: data_files:', data_files)
         if data_files:
             for data_file in data_files:
                 yield from self._search_data_file(data_file, ts_start, ts_end, flags, match, order == 'desc')
