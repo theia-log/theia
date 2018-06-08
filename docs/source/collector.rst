@@ -99,7 +99,7 @@ Once all events have been send back to the client, the collector will close the
 websocket connection to the client.
 
 The criteria message must a JSON string with the following format:
-    .. code-block:: json
+    .. code-block:: javascript
         
         {
             "start": int,
@@ -121,7 +121,7 @@ Where:
 
 Match all events after a timestamp that have a tag ``log`` on any ``web-server`` 
 and contain ``[ERROR]``:
-    .. code-block:: json
+    .. code-block:: javascript
         
         {
             "start": 1527283299,
@@ -154,7 +154,7 @@ The first message sent to the collector after establishing the channel **must**
 be the filter criteria object serialized as JSON string.
 
 The criteria object has the following format:
-    .. code-block:: json
+    .. code-block:: javascript
         
         {
             "id": "string regex",
@@ -179,7 +179,7 @@ Where:
 
 Match all events after a timestamp that have a tag ``log`` on any ``web-server`` 
 and contain ``[ERROR]`` from the ``/var/log`` files (source):
-    .. code-block:: json
+    .. code-block:: javascript
         
         {
             "start": 1527283299,
