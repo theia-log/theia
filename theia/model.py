@@ -247,6 +247,14 @@ class EventSerializer:
         return hdr
 
 
+_HEADER_FIELDS = {
+    'id': lambda value: value,
+    'timestamp': lambda value: float(value),
+    'source': lambda value: value,
+    'tags': lambda value: value.split(',')
+}
+
+
 class EventParser:
     """Parses an incoming bytes stream into an :class:`Event`.
 
@@ -297,18 +305,12 @@ class EventParser:
             if not line:
                 raise Exception('Invalid header')
             idx = line.index(':')
-            prop = line[0:idx]
+            prop = line[0:idx].lower()
             value = line[idx + 1:]
-            if prop == 'id':
-                header.id = value
-            elif prop == 'timestamp':
-                header.timestamp = float(value)
-            elif prop == 'source':
-                header.source = value
-            elif prop == 'tags':
-                header.tags = value.split(',')
-            else:
+            parse_field = _HEADER_FIELDS.get(prop)
+            if not parse_field:
                 raise Exception('Unknown property in header %s' % prop)
+            setattr(header, prop, parse_field(value))
             line = sio.readline()
         sio.close()
         return header
