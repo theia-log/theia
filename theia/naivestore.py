@@ -66,9 +66,12 @@ from os import listdir
 from collections import namedtuple
 import re
 import time
-
 from theia.storeapi import EventStore
 from theia.model import EventSerializer, EventParser, EOFException, Event
+from logging import getLogger
+
+
+log = getLogger(__name__)
 
 
 class PeriodicTimer(Thread):
@@ -209,9 +212,9 @@ class FileIndex:
                 files.append(df)
 
         files = sorted(files, key=lambda n: n.start)
-        print('Loaded %d files to index.' % len(files))
+        log.info('Loaded %d files to index.' % len(files))
         if len(files):
-            print('Spanning from %d to %d' % (files[0].start, files[-1].end))
+            log.info('Spanning from %d to %d' % (files[0].start, files[-1].end))
         return files
 
     def _load_data_file(self, fname):
@@ -269,7 +272,7 @@ class NaiveEventStore(EventStore):
         if flush_interval > 0:
             self.timer = PeriodicTimer(flush_interval / 1000, self._flush_open_files)
             self.timer.start()
-            print('Flushing buffers every %fms' % (flush_interval / 1000))
+            log.info('Flushing buffers every %fms' % (flush_interval / 1000))
 
     def _get_event_file(self, ts_from):
         data_file = self.index.find_event_file(ts_from)
@@ -290,7 +293,7 @@ class NaiveEventStore(EventStore):
             try:
                 open_file.flush()
             except Exception as e:
-                print('Error while flushing %s' % fn, e)
+                log.error('Error while flushing %s' % fn, e)
 
     def _get_new_data_file(self, ts_from):
         ts_end = ts_from + self.data_file_interval
@@ -308,7 +311,7 @@ class NaiveEventStore(EventStore):
                 self.open_files[df.path] = self._open_file(df)
             mf = self.open_files[df.path]
             mf.write(self.serializer.serialize(event))
-            mf.write('\n'.encode(self.serialized.encoding))
+            mf.write('\n'.encode(self.serializer.encoding))
             if self.flush_interval <= 0:
                 mf.flush()
         finally:
@@ -325,7 +328,7 @@ class NaiveEventStore(EventStore):
         if self.timer:
             self.timer.cancel()
             self.timer.join()
-        print('Naive Store stopped')
+        log.info('Naive Store stopped')
 
     def _search_data_file(self, data_file, ts_start, ts_end, flags, match, reverse):
         if reverse:
