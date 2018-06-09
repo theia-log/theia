@@ -24,11 +24,11 @@ an example of usage of the store:
         from theia.model import Event
         from uuid import uuid4
         from datetime import datetime
-        
+
         store = NaiveEventStore(root_dir='./data')
-        
+
         timestamp = datetime.now().timestamp()
-        
+
         store.save(Event(id=uuid4(),
                          source='test-example',
                          timestamp=timestamp,
@@ -44,14 +44,14 @@ an example of usage of the store:
                          timestamp=timestamp + 20,
                          tags=['example'],
                          content='event 3'))
-        
+
         # now let's search some events
-        
+
         for ev in store.search(ts_start=timestamp + 5):
             print('Found:', ev.content)
 
 would print::
-    
+
     >> Found: event 2
     >> Found: event 3
 
@@ -66,9 +66,10 @@ from os import listdir
 from collections import namedtuple
 import re
 import time
-from theia.storeapi import EventStore
-from theia.model import EventSerializer, EventParser, EOFException, Event
 from logging import getLogger
+from theia.storeapi import EventStore
+from theia.model import EventSerializer, EventParser, EOFException
+
 
 
 log = getLogger(__name__)
@@ -179,7 +180,7 @@ DataFile = namedtuple('DataFile', ['path', 'start', 'end'])
 def binary_search(datafiles, ts):
     start = 0
     end = len(datafiles) - 1
-    if not len(datafiles):
+    if not datafiles:
         return None
     if datafiles[0].start > ts or datafiles[-1].end < ts:
         return None
@@ -193,8 +194,7 @@ def binary_search(datafiles, ts):
         if end - start <= 1:
             if datafiles[start].end >= ts:
                 return start
-            else:
-                return end
+            return end
     return None
 
 
@@ -206,19 +206,19 @@ class FileIndex:
     def _load_files(self, root_dir):
         files = []
 
-        for fn in listdir(root_dir):
-            df = self._load_data_file(fn)
-            if df:
-                files.append(df)
+        for file_name in listdir(root_dir):
+            data_file = self._load_data_file(file_name)
+            if data_file:
+                files.append(data_file)
 
         files = sorted(files, key=lambda n: n.start)
-        log.info('Loaded %d files to index.' % len(files))
-        if len(files):
-            log.info('Spanning from %d to %d' % (files[0].start, files[-1].end))
+        log.info('Loaded %d files to index.', len(files))
+        if files:
+            log.info('Spanning from %d to %d', files[0].start, files[-1].end)
         return files
 
     def _load_data_file(self, fname):
-        if re.match('\d+-\d+', fname):
+        if re.match(r'\d+-\d+', fname):
             start, _, end = fname.partition('-')
             start, end = int(start), int(end)
             return DataFile(path=join_paths(self.root, fname), start=start, end=end)
@@ -234,12 +234,12 @@ class FileIndex:
         if idx is not None:
             found = []
             while idx < len(self.files):
-                df = self.files[idx]
+                data_file = self.files[idx]
                 if ts_to:
-                    if df.start > ts_to:
+                    if data_file.start > ts_to:
                         break # hit the last
-                if df.start >= ts_from or df.end >= ts_from:
-                    found.append(df)
+                if data_file.start >= ts_from or data_file.end >= ts_from:
+                    found.append(data_file)
 
                 idx += 1
             return found if found else None
@@ -252,9 +252,9 @@ class FileIndex:
         return None
 
     def add_file(self, fname):
-        df = self._load_data_file(fname)
-        if df:
-            self.files.append(df)
+        data_file = self._load_data_file(fname)
+        if data_file:
+            self.files.append(data_file)
             self.files = sorted(self.files, key=lambda n: n.start)
 
 
@@ -272,7 +272,7 @@ class NaiveEventStore(EventStore):
         if flush_interval > 0:
             self.timer = PeriodicTimer(flush_interval / 1000, self._flush_open_files)
             self.timer.start()
-            log.info('Flushing buffers every %fms' % (flush_interval / 1000))
+            log.info('Flushing buffers every %fms', (flush_interval / 1000))
 
     def _get_event_file(self, ts_from):
         data_file = self.index.find_event_file(ts_from)
@@ -289,11 +289,11 @@ class NaiveEventStore(EventStore):
         return MemoryFile(name=basename(data_file.path), path=dirname(data_file.path))
 
     def _flush_open_files(self):
-        for fn, open_file in self.open_files.items():
+        for file_name, open_file in self.open_files.items():
             try:
                 open_file.flush()
             except Exception as e:
-                log.error('Error while flushing %s' % fn, e)
+                log.error('Error while flushing %s. Error: %s', file_name, e)
 
     def _get_new_data_file(self, ts_from):
         ts_end = ts_from + self.data_file_interval
@@ -304,16 +304,16 @@ class NaiveEventStore(EventStore):
         # lock it
         # save serialized event
         # unlock
-        df = self._get_event_file(event.timestamp)
+        data_file = self._get_event_file(event.timestamp)
         try:
             self.write_lock.acquire()
-            if not self.open_files.get(df.path):
-                self.open_files[df.path] = self._open_file(df)
-            mf = self.open_files[df.path]
-            mf.write(self.serializer.serialize(event))
-            mf.write('\n'.encode(self.serializer.encoding))
+            if not self.open_files.get(data_file.path):
+                self.open_files[data_file.path] = self._open_file(data_file)
+            mem_file = self.open_files[data_file.path]
+            mem_file.write(self.serializer.serialize(event))
+            mem_file.write('\n'.encode(self.serializer.encoding))
             if self.flush_interval <= 0:
-                mf.flush()
+                mem_file.flush()
         finally:
             self.write_lock.release()
 
@@ -345,10 +345,10 @@ class NaiveEventStore(EventStore):
 
     def _match_reverse(self, data_file, ts_start, ts_end, flags, match):
         matched = []
-        for m in self._match_forward(data_file, ts_start, ts_end, flags, match):
-            matched.append(m)
-        for m in reversed(matched):
-            yield m
+        for result in self._match_forward(data_file, ts_start, ts_end, flags, match):
+            matched.append(result)
+        for result in reversed(matched):
+            yield result
 
     def _seq_event_parser(self, data_file):
         return SequentialEventReader(open(data_file.path, 'rb'), EventParser())
@@ -363,3 +363,11 @@ class NaiveEventStore(EventStore):
             return False
 
         return True
+
+    def get(self, event_id):
+        log.warning('Get event by id [%s], but operation "get" is not supported in NaiveEventStore.', event_id)
+        raise Exception('Get event not supported.')
+
+    def delete(self, event_id):
+        log.warning('Delete event by id [%s], but operation "delete" is not supported in NaiveEventStore.', event_id)
+        raise Exception('Delete event not supported.')
