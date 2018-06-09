@@ -373,16 +373,19 @@ class EventParser:
         preamble = self.parse_preamble(stream)
         header = self.parse_header(preamble.header, stream)
         content = None
+        read_length = None
         if skip_content:
             stream.seek(preamble.content, SEEK_CUR)
         else:
             content = stream.read(preamble.content)
+            read_length = len(content)
             content = content.decode(self.encoding)
 
         stream.seek(1, SEEK_CUR)  # new line after each event
 
-        if not skip_content and len(content) != preamble.content:
-            raise Exception('Invalid content size. The stream is either unreadable or corrupted.')
+        if not skip_content and read_length != preamble.content:
+            raise Exception('Invalid content size. The stream is either unreadable or corrupted. ' +
+                            'Preamble declares %d bytes, but content length is %d' % (preamble.content, len(content)))
 
         return Event(id=header.id, source=header.source, timestamp=header.timestamp,
                      tags=header.tags, content=content)
