@@ -81,7 +81,7 @@ class PeriodicTimer(Thread):
     run the action you must call :meth:`PeriodicTimer.start`.
     The first execution of the action is delayed by ``interval`` seconds. This timer does not call the ``action``
     callback every ``interval`` seconds, but rather waits ``interval`` seconds between after the action completes until
-    the next call. So for a long running tasks, the time of call of the action may not be even-spaced.
+    the next call. So for a long running tasks, the time of call of the action may not be evenly spaced.
 
     You can cancel this timer by calling meth:`PeriodicTimer.cancel`.
 
@@ -126,10 +126,10 @@ class SequentialEventReader:
 
     Provides two ways of parsing the events:
     * Parsing the event fully - loads the header and the content of the event. See :meth:`SequentialEventReader.events`.
-    * Parsing only the event header - this skips the loading of the content. Usefull for not wasting performance/memory
+    * Parsing only the event header - this skips the loading of the content. Useful for not wasting performance/memory
         on loading and decoding the event content when not searching by the event content.
 
-    This reader implements the context manager inteface and can be used in ``with`` statements. For example:
+    This reader implements the context manager interface and can be used in ``with`` statements. For example:
     .. code-block:: python
 
         with SequentialEventReader(stream, parser) as reader:
@@ -258,7 +258,7 @@ class MemoryFile:
     def flush(self):
         """Writes the in-memory buffer to the file in the file-system.
 
-        This operation is atomic ang guarantees that the complete state of the buffer will be written to the file.
+        This operation is atomic and guarantees that the complete state of the buffer will be written to the file.
         The underlying file will never be left in an inconsistent state. This is achieved by first writing the entire
         buffer to a temporary file (in the same directory), flushing the system buffers, then if this succeeds, renaming
         the temporary file as the original file name.
@@ -285,7 +285,7 @@ DataFile.start.__doc__ = """
     ``int``, timestamp, the start of the interval. The data file does not contain any events before this timestamp.
 """
 
-DataFile.path.__doc__ = """
+DataFile.end.__doc__ = """
     ``int``, timestamp, the end of the interval. The data file does not contain any events after this timestamp.
 """
 
@@ -298,7 +298,7 @@ def binary_search(datafiles, timestamp):
         timestamp.
     :param timestamp: ``float``, the timestamp to serch for.
 
-    Returns the index (``int``) of the first :class:``DataFile`` in the list that contains event that occured at or
+    Returns the index (``int``) of the first :class:`DataFile` in the list that contains event that occurred at or
     after the provided timestamp. Returns ``None`` if no such data file can be found.
     """
     start = 0
@@ -322,7 +322,7 @@ def binary_search(datafiles, timestamp):
 
 
 class FileIndex:
-    """An index of :class:`DataFile` files loaded from the given direcory.
+    """An index of :class:`DataFile` files loaded from the given directory.
 
     Loads an builds an index of :class:`DataFile` files from the given directory. Each data file name must be in the
     form: ``<start>-<end>``, where ``start`` and ``end`` represent the time interval of the events in that data file.
@@ -393,7 +393,7 @@ class FileIndex:
         return None
 
     def find_event_file(self, timestamp):
-        """Find the event fils that contains the event with the given timestamp.
+        """Find the event file that contains the event with the given timestamp.
 
         :param timestamp: ``int``, the timestamp of the event.
 
@@ -426,7 +426,7 @@ class NaiveEventStore(EventStore):
     so for example a file with name *1528631988-1528632048* contains only events that happened at or after
     ``1528631988``, but before ``1528632048``.
 
-    The store by default uses in-memory buffers to write new events, and flushes the buffer periodiacally. By default
+    The store by default uses in-memory buffers to write new events, and flushes the buffer periodically. By default
     the flushing occurs roughly every second (1000ms, see the parameter ``flush_interval``). This increases the
     performance of the store, but if outage occurs within this interval, the data in the in-memory buffers will be lost.
     The store can be configured to flush the events immediately on disk (by passing ``0`` for ``flush_interval``), but
@@ -436,8 +436,8 @@ class NaiveEventStore(EventStore):
 
     :param root_dir: ``str``, the root directory where to store the events data files.
     :param flush_interval: ``int``, flush interval for the data files buffers in milliseconds. The event data files will
-    be flushed and persisted on disk every ``flush_interval`` milliseconds. The default value is 1000ms. To flush
-    immediately (no buffering), set this value equal or less than ``0``.
+        be flushed and persisted on disk every ``flush_interval`` milliseconds. The default value is 1000ms. To flush
+        immediately (no buffering), set this value equal or less than ``0``.
     """
     def __init__(self, root_dir, flush_interval=1000):
         self.root_dir = root_dir
