@@ -1,7 +1,9 @@
 """
----------------------------
+----------
+theia.comm
+----------
+
 Theia communication module.
----------------------------
 
 Defines classes for building theia servers and clients.
 

@@ -1,3 +1,12 @@
+"""
+-----------
+theia.query
+-----------
+
+Query theia server for events.
+
+This module contains the :class:`Query` that implements API for querying a theia collector server.
+"""
 import asyncio
 from theia.comm import Client
 import json
@@ -13,17 +22,17 @@ class ResultHandler:
         self.client = client
         self._close_handlers = []
         self.client.on_close(self._on_client_closed)
-        
+
     def _on_client_closed(self, websocket, code, reason):
         for hnd in self._close_handlers:
             try:
                 hnd(self.client, code, reason)
             except Exception as e:
                 log.debug('ResultHandler[%s]: close hander %s error: %s', self.client, hnd, e)
-    
+
     def when_closed(self, closed_handler):
         self._close_handlers.append(closed_handler)
-    
+
     def cancel(self):
         if self.client.is_open():
             self.client.close()
@@ -49,19 +58,18 @@ class Query:
         client = Client(loop=self.loop, host=self.host, port=self.port, path=path, recv=callback)
 
         client.connect()
-        
+
         self.connections.add(client)
-        
+
         def on_client_closed(websocket, code, reason):
             # client was closed
             if client in self.connections:
                 self.connections.remove(client)
-        
+
         client.on_close(on_client_closed)
-        
+
         msg = json.dumps(cf)
 
         client.send(msg)
-        
-        return ResultHandler(client)
 
+        return ResultHandler(client)

@@ -1,7 +1,7 @@
 """
-------------------------
-Log aggregator collector
-------------------------
+---------------
+theia.collector
+---------------
 
 The log aggregator collector server imlementation.
 """

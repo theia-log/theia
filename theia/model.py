@@ -1,7 +1,9 @@
 """
------------------
-Theia Event Model
------------------
+-----------
+theia.model
+-----------
+
+Theia event data model.
 
 Basic model of an Event, serializers and parsers for Event manipulation.
 """

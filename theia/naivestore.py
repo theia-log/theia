@@ -1,7 +1,9 @@
 """
----------------------------------------
-Naive implementation of the Event Store
----------------------------------------
+----------------
+theia.naivestore
+----------------
+
+Naive implementation of the Event Store.
 
 This module provides an implementation of the :class:`theia.storeapi.EventStore`
 that stores the events in plain-text files.
