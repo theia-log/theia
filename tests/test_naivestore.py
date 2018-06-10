@@ -4,8 +4,9 @@ from theia.naivestore import (PeriodicTimer,
                               SequentialEventReader,
                               MemoryFile,
                               FileIndex,
-                              DataFile)
-from theia.model import EventParser, Event
+                              DataFile,
+                              NaiveEventStore)
+from theia.model import EventParser, Event, EventSerializer
 from time import sleep
 from uuid import uuid4
 from io import BytesIO
@@ -350,3 +351,125 @@ def test_file_index_load_files():
         assert file_index.files[1].end == 25
         assert file_index.files[2].start == 30
         assert file_index.files[2].end == 39
+
+
+
+def test_naive_store_save_no_buffering():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        ns = None
+        try:
+            ns = NaiveEventStore(root_dir=tmpdir, flush_interval=0)
+            event = Event(id='event-1', timestamp=10, source='/source/1', tags=['event', 'test'], content='event 1')
+            
+            ns.save(event)
+            
+            assert os.path.isfile(os.path.join(tmpdir, '10-70'))
+            
+            with open(os.path.join(tmpdir, '10-70')) as ef:
+                ser_event = ef.read()
+                assert ser_event == 'event: 73 66 7\nid:event-1\ntimestamp: 10.0000000\nsource:/source/1\ntags:event,test\nevent 1\n\n'
+        finally:
+            if ns:
+                ns.close()
+
+
+def test_naive_store_save_buffered():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        ns = None
+        try:
+            ns = NaiveEventStore(root_dir=tmpdir, flush_interval=500)
+            
+            event = Event(id='event-1', timestamp=10, source='/source/1', tags=['event', 'test'], content='event 1')
+            
+            ns.save(event)
+            
+            assert os.path.isfile(os.path.join(tmpdir, '10-70')) is False
+            
+            sleep(0.6)
+            
+            assert os.path.isfile(os.path.join(tmpdir, '10-70'))
+            
+            with open(os.path.join(tmpdir, '10-70')) as ef:
+                ser_event = ef.read()
+                assert ser_event == 'event: 73 66 7\nid:event-1\ntimestamp: 10.0000000\nsource:/source/1\ntags:event,test\nevent 1\n\n'
+        finally:
+            if ns:
+                ns.close()
+
+
+def test_naive_store_search():
+    known_events = [{"name": "10-70", "events": [Event(id="event-1", timestamp=10, source="/src/1", tags=["a"], content="event-1, data file 1"),
+                                                 Event(id="event-2", timestamp=15, source="/src/2", tags=["b"], content="event-2, data file 1"),
+                                                 Event(id="event-3", timestamp=30, source="/src/1", tags=["a", "b"], content="event-3, data file 1"),
+                                                 Event(id="event-4", timestamp=67, source="/src/3", tags=["c" ], content="event-4, data file 1")]},
+                    {"name": "71-131", "events": [Event(id="event-5", timestamp=75, source="/src/1", tags=["d"], content="event-5, data file 2"),
+                                                  Event(id="event-6", timestamp=100, source="/src/4", tags=["e" ], content="event-6, data file 2")]},
+                    {"name": "200-260", "events": [Event(id="event-7", timestamp=200, source="/src/5", tags=["f"], content="event-7, data file 3"),
+                                                   Event(id="event-8", timestamp=210, source="/src/2", tags=["g"], content="event-8, data file 3"),
+                                                   Event(id="event-9", timestamp=220, source="/src/1", tags=["h", "f"], content="event-9, data file 3"),
+                                                   Event(id="event-10", timestamp=250, source="/src/6", tags=["i" ], content="event-10, data file 3")]}]
+    
+    serializer = EventSerializer()
+    
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # create data files with events
+        for df_spec in known_events:
+            with open(os.path.join(tmpdir, df_spec["name"]), "wb") as df:
+                for event in df_spec["events"]:
+                    df.write(serializer.serialize(event))
+                    df.write("\n".encode("utf-8")) # the extra newline to separate events in the data file
+        
+        ns = NaiveEventStore(root_dir=tmpdir)
+        try:
+            # lookup all
+            results = []
+            for event in ns.search(ts_start=10):
+                results.append(event)
+            
+            assert len(results) == 10
+            
+            # lookup in an interval
+            
+            results = []
+            for event in ns.search(ts_start=30, ts_end=80):
+                results.append(event)
+            
+            assert len(results) == 3
+            assert [e.id for e in results] == ['event-3', 'event-4', 'event-5']
+            
+            # lookup by tags
+            
+            results = []
+            for event in ns.search(ts_start=5, flags=["a"]):
+                results.append(event)
+            
+            assert len(results) == 2
+            assert [e.id for e in results] == ['event-1', 'event-3']
+            
+            # lookup by content
+            
+            results = []
+            for event in ns.search(ts_start=5, match='data file 3'):
+                results.append(event)
+            
+            assert len(results) == 4
+            assert [e.id for e in results] == ['event-7', 'event-8', 'event-9', 'event-10']
+            
+            # lookup by content - regex through multiple files
+            
+            results = []
+            for event in ns.search(ts_start=5, match='event-(4|5|7|10)'):
+                results.append(event)
+            
+            assert len(results) == 4
+            assert [e.id for e in results] == ['event-4', 'event-5', 'event-7', 'event-10']
+        
+        
+        finally:
+            if ns:
+                ns.close()
+        
+        
+    
+    
+    

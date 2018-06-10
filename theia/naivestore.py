@@ -543,8 +543,9 @@ class NaiveEventStore(EventStore):
                 if not flag in event.tags:
                     return False
 
-        if match and event.content and not match.lower() in event.content.lower():
-            return False
+        if match and event.content and match:
+            if not re.search(match, event.content):
+                return False
 
         return True
 
