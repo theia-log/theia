@@ -18,37 +18,37 @@ span. The name of the file is the time span: <first-event-timestamp>-<last-event
 
 The naive store requires a root directory in which to store the events. Here is
 an example of usage of the store:
-    .. code-block:: python
+.. code-block:: python
 
-        from theia.naivestore import NaiveEventStore
-        from theia.model import Event
-        from uuid import uuid4
-        from datetime import datetime
+    from theia.naivestore import NaiveEventStore
+    from theia.model import Event
+    from uuid import uuid4
+    from datetime import datetime
 
-        store = NaiveEventStore(root_dir='./data')
+    store = NaiveEventStore(root_dir='./data')
 
-        timestamp = datetime.now().timestamp()
+    timestamp = datetime.now().timestamp()
 
-        store.save(Event(id=uuid4(),
-                         source='test-example',
-                         timestamp=timestamp,
-                         tags=['example'],
-                         content='event 1'))
-        store.save(Event(id=uuid4(),
-                         source='test-example',
-                         timestamp=timestamp + 10,
-                         tags=['example'],
-                         content='event 2'))
-        store.save(Event(id=uuid4(),
-                         source='test-example',
-                         timestamp=timestamp + 20,
-                         tags=['example'],
-                         content='event 3'))
+    store.save(Event(id=uuid4(),
+                     source='test-example',
+                     timestamp=timestamp,
+                     tags=['example'],
+                     content='event 1'))
+    store.save(Event(id=uuid4(),
+                     source='test-example',
+                     timestamp=timestamp + 10,
+                     tags=['example'],
+                     content='event 2'))
+    store.save(Event(id=uuid4(),
+                     source='test-example',
+                     timestamp=timestamp + 20,
+                     tags=['example'],
+                     content='event 3'))
 
-        # now let's search some events
+    # now let's search some events
 
-        for ev in store.search(ts_start=timestamp + 5):
-            print('Found:', ev.content)
+    for ev in store.search(ts_start=timestamp + 5):
+        print('Found:', ev.content)
 
 would print::
 
@@ -125,19 +125,23 @@ class SequentialEventReader:
     Uses an :class:`theia.model.EventParser` to parse the events from the incoming stream.
 
     Provides two ways of parsing the events:
+
     * Parsing the event fully - loads the header and the content of the event. See :meth:`SequentialEventReader.events`.
     * Parsing only the event header - this skips the loading of the content. Useful for not wasting performance/memory
         on loading and decoding the event content when not searching by the event content.
 
     This reader implements the context manager interface and can be used in ``with`` statements. For example:
+
     .. code-block:: python
 
         with SequentialEventReader(stream, parser) as reader:
             for event in reader.events():
                 print(event)
 
+
     :param stream: :class:`io.BytesIO`, the incoming stream to read events from.
     :param event_parser: :class:`theia.model.EventParser`, the parser used for parsing the events from the stream.
+
     """
     def __init__(self, stream, event_parser):
         self.stream = stream

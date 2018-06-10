@@ -38,10 +38,11 @@ class Client:
     :param path: ``str``, the request path - for example: ``"/live"``, ``"/events"`` etc.
     :param recv: ``function``, receive handler. Called when a message is received from the
         server. The handler has the following signature:
-    .. code-block:: python
 
-        def handler(message):
-            pass
+        .. code-block:: python
+
+            def handler(message):
+                pass
 
     where:
         * ``message`` is the message received from the theia server.
@@ -147,10 +148,11 @@ class Client:
 
         :param handler: ``function``, the handler callback. The callback prototype
             looks like so:
-        .. code-block:: python
 
-            def callback(websocket, code, reason):
-                pass
+            .. code-block:: python
+
+                def callback(websocket, code, reason):
+                    pass
 
         where:
 
@@ -266,10 +268,11 @@ class Server:
         :param cb: ``function``, the callback to be called when a message is received
             from the client on this path.
             The callback handler looks like this:
-        .. code-block:: python
 
-            def callback(path, message, websocket, resp):
-                return resp
+            .. code-block:: python
+
+                def callback(path, message, websocket, resp):
+                    return resp
 
         where:
 
@@ -318,10 +321,11 @@ class Server:
             to watch for closing.
         :param cb: ``function``, the callback to be called when the ``websocket``
             is closed. The callback should look like this:
-        .. code-block:: python
 
-            def callback(ws, path):
-                pass
+            .. code-block:: python
+
+                def callback(ws, path):
+                    pass
 
         where:
 
