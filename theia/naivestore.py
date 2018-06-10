@@ -208,21 +208,45 @@ class SequentialEventReader:
 
 
 class MemoryFile:
+    """File-system backed in-memory buffer.
 
+    This class wraps an :class:`io.BytesIO` buffer and backs it up with a real file in the file-system.
+    The writes go to the in-memory buffer, which then can be flushed to the actual file in the file-system.
+
+    The flushing of the buffer is atomic and consistent. The buffer is first flushed to a temporary file, then the
+    system buffers are synced, and then the temporary file is renamed as the actual file.
+
+    The instances of this class are thread-safe and can be shared between threads.
+
+    **Limitations:** This class is not optimized for large data files as it keeps all of the file data in memory. This
+    may cause a performance penalty in both speed and memory consumption when dealing with large files. In those cases
+    it is better to use other memory mapped file implementations.
+
+    :param name: ``str``, the name of the file in the file-system. This is just the filename, without the directory.
+    :param path: ``str``, the directory holding the file in the file-system.
+    """
     def __init__(self, name, path):
         self.name = name
         self.path = path
         self.buffer = BytesIO()
         self.lock = RLock()
 
-    def write(self, obj):
+    def write(self, data):
+        """Write to the data to the buffer.
+
+        This writes the data to the in-memory buffer.
+
+        :param data: ``bytes``, the data to be written to the buffer.
+        """
         try:
             self.lock.acquire()
-            self.buffer.write(obj)
+            self.buffer.write(data)
         finally:
             self.lock.release()
 
     def stream(self):
+        """Returns a copy of the underlying :class:`io.BytesIO` in-memory stream.
+        """
         # copy the buffer
         # return the copy
         try:
@@ -232,6 +256,13 @@ class MemoryFile:
             self.lock.release()
 
     def flush(self):
+        """Writes the in-memory buffer to the file in the file-system.
+
+        This operation is atomic ang guarantees that the complete state of the buffer will be written to the file.
+        The underlying file will never be left in an inconsistent state. This is achieved by first writing the entire
+        buffer to a temporary file (in the same directory), flushing the system buffers, then if this succeeds, renaming
+        the temporary file as the original file name.
+        """
         tmpf = NamedTemporaryFile(dir=self.path, delete=False)
         try:
             self.lock.acquire()
@@ -243,30 +274,64 @@ class MemoryFile:
 
 
 DataFile = namedtuple('DataFile', ['path', 'start', 'end'])
+"""Represents a file containing data (events) within a given time interval (from ``start`` to ``end``).
+"""
+
+DataFile.path.__doc__ = """
+    ``str``, the path to the data file.
+"""
+
+DataFile.start.__doc__ = """
+    ``int``, timestamp, the start of the interval. The data file does not contain any events before this timestamp.
+"""
+
+DataFile.path.__doc__ = """
+    ``int``, timestamp, the end of the interval. The data file does not contain any events after this timestamp.
+"""
 
 
-def binary_search(datafiles, ts):
+def binary_search(datafiles, timestamp):
+    """Performs a binary search in the list of datafiles, for the index of the first data file that contain events that
+    happened at or after the provided timestamp.
+
+    :param datafiles: ``list`` of :class:`DataFile`, list of datafiles **sorted** in ascending order by the start
+        timestamp.
+    :param timestamp: ``float``, the timestamp to serch for.
+
+    Returns the index (``int``) of the first :class:``DataFile`` in the list that contains event that occured at or
+    after the provided timestamp. Returns ``None`` if no such data file can be found.
+    """
     start = 0
     end = len(datafiles) - 1
     if not datafiles:
         return None
-    if datafiles[0].start > ts or datafiles[-1].end < ts:
+    if datafiles[0].start > timestamp or datafiles[-1].end < timestamp:
         return None
 
     while True:
         mid = (end + start) // 2
-        if datafiles[mid].end >= ts:
+        if datafiles[mid].end >= timestamp:
             end = mid
         else:
             start = mid
         if end - start <= 1:
-            if datafiles[start].end >= ts:
+            if datafiles[start].end >= timestamp:
                 return start
             return end
     return None
 
 
 class FileIndex:
+    """An index of :class:`DataFile` files loaded from the given direcory.
+
+    Loads an builds an index of :class:`DataFile` files from the given directory. Each data file name must be in the
+    form: ``<start>-<end>``, where ``start`` and ``end`` represent the time interval of the events in that data file.
+
+    :class:`FileIndex` loads all data files and builds a total time span of all data files. The index exposes methods
+    for locating and searching files that contain the events within a given time interval.
+
+    :param root_dir: ``str``, the directory from which to load the data files.
+    """
     def __init__(self, root_dir):
         self.root = root_dir
         self.files = self._load_files(root_dir)
@@ -293,6 +358,20 @@ class FileIndex:
         return None
 
     def find(self, ts_from, ts_to):
+        """Finds the data files that contain the events within the given interval [``ts_from``, ``ts_to``].
+
+        The interval can be open at the end ([``ts_from``, ``Inf``]), by passing ``0`` for ``ts_to``. The interval
+        cannot be open at the start.
+
+        :param ts_from: ``float``, timestamp, find all data files containing events that have timestamp greater than or
+            equal to ``ts_from``.
+        :param ts_to: ``float``, timestamp, find all data files containing events that have timestamp less than or equal
+            to ``ts_to``. If ``0`` or ``None`` is passed for this parameter, then the end of the time span is open,
+            meaning this parameter will be ignore in the search.
+
+        Returns a ``list`` of :class:`DataFile` files that contain the events within the given interval. Returns
+        ``None`` if there are no files containing events within the given interval.
+        """
         idx = binary_search(self.files, ts_from)
         if idx is None and self.files:
             if self.files[0].start >= ts_from:
@@ -313,13 +392,25 @@ class FileIndex:
             return found if found else None
         return None
 
-    def find_event_file(self, ts_from):
-        idx = binary_search(self.files, ts_from)
+    def find_event_file(self, timestamp):
+        """Find the event fils that contains the event with the given timestamp.
+
+        :param timestamp: ``int``, the timestamp of the event.
+
+        Returns the :class:`DataFile` containing the event, or ``None`` if it cannot be found.
+        """
+        idx = binary_search(self.files, timestamp)
         if idx is not None:
             return self.files[idx]
         return None
 
     def add_file(self, fname):
+        """Add a data file to the :class:`FileIndex`.
+
+        The time span will be recalculated to incorporate this new data file.
+
+        :param fname: ``str``, the file name of the data file to be added to the file index.
+        """
         data_file = self._load_data_file(fname)
         if data_file:
             self.files.append(data_file)
@@ -327,7 +418,27 @@ class FileIndex:
 
 
 class NaiveEventStore(EventStore):
+    """A naive implementation of the :class:`theia.storeapi.EventStore` that keeps the event data is a plain text files.
 
+    The events are kept in plain text files, serialized by default in UTF-8. The files are human readable and the format
+    is designed to be (relatively) easily processed by other tools as well (such as ``grep``). Each data file contains
+    events that happened within one minute (60000ms). The names of the data files also reflect the time span interval,
+    so for example a file with name *1528631988-1528632048* contains only events that happened at or after
+    ``1528631988``, but before ``1528632048``.
+
+    The store by default uses in-memory buffers to write new events, and flushes the buffer periodiacally. By default
+    the flushing occurs roughly every second (1000ms, see the parameter ``flush_interval``). This increases the
+    performance of the store, but if outage occurs within this interval, the data in the in-memory buffers will be lost.
+    The store can be configured to flush the events immediately on disk (by passing ``0`` for ``flush_interval``), but
+    this decreases the performance of the store significantly.
+
+    The instances of this class are thread-safe and can be shared between threads.
+
+    :param root_dir: ``str``, the root directory where to store the events data files.
+    :param flush_interval: ``int``, flush interval for the data files buffers in milliseconds. The event data files will
+    be flushed and persisted on disk every ``flush_interval`` milliseconds. The default value is 1000ms. To flush
+    immediately (no buffering), set this value equal or less than ``0``.
+    """
     def __init__(self, root_dir, flush_interval=1000):
         self.root_dir = root_dir
         self.data_file_interval = 60  # 60 seconds
@@ -433,9 +544,13 @@ class NaiveEventStore(EventStore):
         return True
 
     def get(self, event_id):
+        """:class:`NaiveEventStore` does not support indexing, so search by ``id`` is also not supported.
+        """
         log.warning('Get event by id [%s], but operation "get" is not supported in NaiveEventStore.', event_id)
         raise Exception('Get event not supported.')
 
     def delete(self, event_id):
+        """:class:`NaiveEventStore` does not support indexing, so a delete by ``id`` is not supported.
+        """
         log.warning('Delete event by id [%s], but operation "delete" is not supported in NaiveEventStore.', event_id)
         raise Exception('Delete event not supported.')
