@@ -71,12 +71,23 @@ from theia.storeapi import EventStore
 from theia.model import EventSerializer, EventParser, EOFException
 
 
-
 log = getLogger(__name__)
 
 
 class PeriodicTimer(Thread):
+    """Timer that executes an action periodically with a given interval.
 
+    The timer executes the action in a separate thread (as this class is a subclass of :class:`threading.Thread`). To
+    run the action you must call :meth:`PeriodicTimer.start`.
+    The first execution of the action is delayed by ``interval`` seconds. This timer does not call the ``action``
+    callback every ``interval`` seconds, but rather waits ``interval`` seconds between after the action completes until
+    the next call. So for a long running tasks, the time of call of the action may not be even-spaced.
+
+    You can cancel this timer by calling meth:`PeriodicTimer.cancel`.
+
+    :param interval: ``numeric``, seconds to wait between subsequent calls to ``action`` callback.
+    :param action: ``function``, the action callback. This callback takes no arguments.
+    """
     def __init__(self, interval, action):
         super(PeriodicTimer, self).__init__(name='periodic-timer@%f:[%s]' % (interval, str(action)))
         self.interval = interval
@@ -84,6 +95,12 @@ class PeriodicTimer(Thread):
         self.is_running = False
 
     def run(self):
+        """Runs the periodic timer.
+
+        Do **not** call this function directly, but rather call :meth:`PeriodicTimer.start` to run this thread.
+
+        To cancel the timer, call :meth:`PeriodicTimer.cancel`.
+        """
         self.is_running = True
 
         time.sleep(self.interval)
@@ -95,16 +112,45 @@ class PeriodicTimer(Thread):
             time.sleep(self.interval)
 
     def cancel(self):
+        """Cancels the running timer.
+
+        The timer thread may continue running until the next cycle, then it exits.
+        """
         self.is_running = False
 
 
 class SequentialEventReader:
+    """Reads events (:class:`theia.model.Event`) from an incoming :class:`io.BytesIO` stream.
 
+    Uses an :class:`theia.model.EventParser` to parse the events from the incoming stream.
+
+    Provides two ways of parsing the events:
+    * Parsing the event fully - loads the header and the content of the event. See :meth:`SequentialEventReader.events`.
+    * Parsing only the event header - this skips the loading of the content. Usefull for not wasting performance/memory
+        on loading and decoding the event content when not searching by the event content.
+
+    This reader implements the context manager inteface and can be used in ``with`` statements. For example:
+    .. code-block:: python
+
+        with SequentialEventReader(stream, parser) as reader:
+            for event in reader.events():
+                print(event)
+
+    :param stream: :class:`io.BytesIO`, the incoming stream to read events from.
+    :param event_parser: :class:`theia.model.EventParser`, the parser used for parsing the events from the stream.
+    """
     def __init__(self, stream, event_parser):
         self.stream = stream
         self.parser = event_parser
 
     def events(self):
+        """Reads full events from the incoming stream.
+
+        Returns an iterator for the read events and yields :class:`theia.model.Event` as it becomes available in the
+        stream.
+
+        The iterator stops if there are no more events available in the stream or the stream closes.
+        """
         while True:
             try:
                 yield self._actual_read()
@@ -112,6 +158,15 @@ class SequentialEventReader:
                 break
 
     def events_no_content(self):
+        """Reads events without content (just header) from the incoming stream.
+
+        Returns an iterator for the read events and yields :class:`theia.model.Event` as it becomes available in the
+        stream.
+
+        Note that the ``content`` property of the :class:`theia.model.Event` will always be set to None.
+
+        The iterator stops if there are no more events available in the stream or the stream closes.
+        """
         while True:
             try:
                 yield self._actual_read(skip_content=True)
@@ -119,6 +174,13 @@ class SequentialEventReader:
                 break
 
     def curr_event(self):
+        """Reads an :class:`theia.model.Event` at the current position in the stream.
+
+        Reads the event fully.
+
+        Returns the :class:`theia.model.Event` at the current position of the stream or ``None`` if there are no more
+        available events to be read from the stream (the stream closes).
+        """
         try:
             return self._actual_read()
         except EOFException:
@@ -133,9 +195,15 @@ class SequentialEventReader:
         return data
 
     def __enter__(self):
+        """Implements the context-manager enter method.
+        Returns a reference to itself.
+        """
         return self
 
     def __exit__(self, *args):
+        """Implements the context-manager exiting method.
+        Closes the underlying stream.
+        """
         self.stream.close()
 
 
