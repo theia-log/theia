@@ -18,6 +18,7 @@ span. The name of the file is the time span: <first-event-timestamp>-<last-event
 
 The naive store requires a root directory in which to store the events. Here is
 an example of usage of the store:
+
 .. code-block:: python
 
     from theia.naivestore import NaiveEventStore
