@@ -468,8 +468,5 @@ def test_naive_store_search():
         finally:
             if ns:
                 ns.close()
-        
-        
-    
-    
-    
+
+
