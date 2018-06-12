@@ -144,19 +144,3 @@ class SourcesDaemon:
         fsrc = self._get_file_source(src_path)
         if fsrc:
             fsrc.modified()
-
-
-if __name__ == '__main__':
-    from threading import Thread
-
-    def run_daemon():
-        daemon = SourcesDaemon(observer=Observer(), client=None, tags=['local', 'test-run'])
-
-        daemon.add_source(fpath='/tmp/pajo', tags=['file'])
-
-        while True:
-            sleep(1)
-
-    t = Thread(target=run_daemon)
-    t.start()
-    t.join()
