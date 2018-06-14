@@ -23,7 +23,7 @@ class FileSource:
     moment of creation of this :class:`FileSource`.
 
     :param str file_path: the path to the file to be watched.
-    :param func callback: the callback handler to be executed when the file is
+    :param function callback: the callback handler to be executed when the file is
         changed. The callback is called with the difference, the path to the
         file and the list of tags for this source. The method signature looks
         like this:
@@ -36,11 +36,12 @@ class FileSource:
         where:
 
         * ``diff``, ``str`` is the difference from the last state of the file.
-            Usually this is the content of the emitted event.
+          Usually this is the content of the emitted event.
         * ``path``, ``str`` is the path to the file that has changed. Usually
-            this is the ``source`` property of the event.
+          this is the ``source`` property of the event.
         * ``tags``, ``list`` is the list of tags associated with this event
-            source.
+          source.
+
     :param str enc: the file encoding. If not specified, ``UTF-8`` is assumed.
     :param list tags: list of tags associated with this source.
 
@@ -186,9 +187,9 @@ class SourcesDaemon:
     defaults to using ``inotify`` kernel subsystem on Linux systems, ``kqueue``
     on MacOSX and BSD-like systems and ``ReadDirectoryChangesW`` on Windows.
 
-    :param :class:`watchdog.Observer` observer: an instance of the
+    :param watchdog.Observer observer: an instance of the
         :class:`watchdog.Observer` to be used.
-    :param :class:`theia.comm.Client` client: a client to a theia collector
+    :param theia.comm.Client client: a client to a theia collector
         server.
     :param list tags: initial list of default tags that are appended to every
         file source watched by this daemon.
