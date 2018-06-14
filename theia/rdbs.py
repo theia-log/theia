@@ -1,4 +1,9 @@
-"""Relational database EventStore implementation.
+"""
+----------
+theia.rdbs
+----------
+
+Relational database EventStore implementation.
 """
 import re
 from sqlalchemy.ext.declarative import declarative_base
