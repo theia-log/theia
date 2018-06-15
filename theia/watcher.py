@@ -71,7 +71,6 @@ class FileSource:
         :param str dest_path: the target location of the file after the move.
         """
         self.path = dest_path
-        self.position = 0
 
     def created(self):
         """Called when the file has actually been created. Does not trigger the
@@ -101,7 +100,7 @@ class FileSource:
 
 class DirectoryEventHandler(FileSystemEventHandler):
     """Implements :class:`watchdog.events.FileSystemEventHandler` and is used
-    with the underlying :class:`watchdog.Observer`.
+    with the underlying :class:`watchdog.observers.Observer`.
 
     Reacts on events triggered by the watchdog Observer and passes down to the
     registered handlers.
@@ -187,8 +186,8 @@ class SourcesDaemon:
     defaults to using ``inotify`` kernel subsystem on Linux systems, ``kqueue``
     on MacOSX and BSD-like systems and ``ReadDirectoryChangesW`` on Windows.
 
-    :param watchdog.Observer observer: an instance of the
-        :class:`watchdog.Observer` to be used.
+    :param watchdog.observers.Observer observer: an instance of the
+        :class:`watchdog.observers.Observer` to be used.
     :param theia.comm.Client client: a client to a theia collector
         server.
     :param list tags: initial list of default tags that are appended to every
@@ -230,7 +229,7 @@ class SourcesDaemon:
                           tags=evtags, content=diff)
             self.client.send_event(event)
 
-        fsrc = FileSource(fpath, callback, enc, tags)
+        fsrc = FileSource(fpath, callback, enc, self._merge_tags(tags))
         pdir, fname = self._split_path(fpath)
         files = self.sources.get(pdir)
         if not files:
@@ -239,6 +238,11 @@ class SourcesDaemon:
         if files.get(fname):
             return
         files[fname] = fsrc
+
+    def _merge_tags(self, tags):
+        if self.tags is None and tags is None:
+            return None
+        return (self.tags or []) + (tags or [])
 
     def remove_source(self, fpath):
         """Remove this path from the list of file event sources.
@@ -253,6 +257,8 @@ class SourcesDaemon:
         files = self.sources.get(pdir)
         if files and files.get(fname):
             del files[fname]
+        if self.sources.get(pdir) is not None and len(self.sources[pdir]) == 0:
+            del self.sources[pdir]
 
     @staticmethod
     def _split_path(fpath):
