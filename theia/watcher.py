@@ -257,7 +257,7 @@ class SourcesDaemon:
         files = self.sources.get(pdir)
         if files and files.get(fname):
             del files[fname]
-        if self.sources.get(pdir) is not None and len(self.sources[pdir]) == 0:
+        if self.sources.get(pdir) is not None and not self.sources[pdir]:
             del self.sources[pdir]
 
     @staticmethod
