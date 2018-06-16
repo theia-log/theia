@@ -51,7 +51,7 @@ def run_collector(args):
         else:
             log.warning('Unable to set up the RDBS Event Store. Will fall back to using Naive Event Store.')
     if not store:
-        store = NaiveEventStore(root_dir=args.data_dir)
+        store = get_naive_store(args)
         log.info('Using Naive Event Store')
 
     collector = Collector(store=store, hostname=args.server_host, port=args.port)
@@ -94,3 +94,17 @@ def get_rdbs_store(args):
         raise Exception('No Database URL')
 
     return create_store(db_url=args.db_url, verbose=args.store_verbose)
+
+
+def get_naive_store(args):
+    """Creates and configures new :class:`theia.naivestore.NaiveEventStore`
+    based on the arguments passed.
+
+    :param argparse.Namespace args: arguments.
+
+    """
+
+    if not args.data_dir:
+        raise Exception('No data directory specified')
+
+    return NaiveEventStore(root_dir=args.data_dir)

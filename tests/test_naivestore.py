@@ -19,7 +19,7 @@ def test_periodic_timer():
     
     pt = PeriodicTimer(action=mock_action, interval=0.2)
     pt.start()
-    sleep(0.41)
+    sleep(0.5)
     pt.cancel()
     pt.join()
     
