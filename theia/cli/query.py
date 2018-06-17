@@ -52,6 +52,7 @@ def get_parser(subparsers):
                         help='Time  (in milliseconds) given to the connecting websocket to ' +
                         'actually close the connection after receiving close frame form the server. ' +
                         'The default is 10ms.')
+    return parser
 
 
 def format_event(event, fmt, datefmt=None):
