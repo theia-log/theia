@@ -6,7 +6,7 @@ with open('README.md', 'r') as fh:
 
 setuptools.setup(
     name="theia",
-    version="0.9.1",
+    version="0.9.2",
     author="Pavle Jonoski",
     author_email="jonoski.pavle@gmail.com",
     description="Theia is a lightweight log aggregator.",
