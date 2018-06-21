@@ -1,3 +1,11 @@
+"""
+------------------
+theia.cli.simulate
+------------------
+
+Event simulation tool.
+"""
+
 from theia.comm import Client
 from theia.model import Event, EventSerializer
 
@@ -14,6 +22,10 @@ import random
 
 
 def get_parser():
+    """Configure and instantiate the argument parser for the simulation tool.
+
+    :returns: configured :class:`argparse.ArgumentParser`.
+    """
     parser = argparse.ArgumentParser(prog='theia.cli.simulate',
                                      description='Simulate events (debugging)')
 
@@ -32,6 +44,19 @@ def get_parser():
 
 
 def generate_content(content=None, size=None):
+    """Generate random  (lorem-ipsum style) content.
+    
+    If ``content`` is provided, just passes through. Otherwise generates 'lorem-ipsum'
+    style random content that is of about the provided ``size``. If no size is given,
+    then it returns just one sentence.
+    
+    :param str content: optional, if given, the content to be returned.
+    :param int size: optional, the size of the generated content. If not provided,
+        then only one sentence is returned. If provided, then generates sentences
+        with total size >= ``size``. Always generates full sentences.
+    
+    :returns: ``str``, the generated content.
+    """
     if content is not None:
         return content
 
@@ -47,6 +72,20 @@ def generate_content(content=None, size=None):
 
 
 def generate_rand_items(items, default):
+    """Generates a random subset (``list``) of the provided list of items.
+    
+    The size of the subset is at least one, and at most is the whole ``items``
+    list.
+    If no items provided, then returns a list of just one item - the ``default``
+    one.
+    
+    The order of the items in the subset is randomized as well.
+    
+    :param list items: the list of items to choose from.
+    :param default: the default item to choose if no list of items is provided.
+    
+    :returns: (`list`) randomized subset of the items list.
+    """
     if len(items) == 0:
         return [default]
 
