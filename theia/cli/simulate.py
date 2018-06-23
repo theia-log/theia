@@ -122,6 +122,15 @@ def generate_rand_event(sources, tags, content, cnt_size):
                  content=generate_content(content, cnt_size))
 
 
+def _send_event(args, tags, client, serializer):
+    """Generate and send a single event.
+    """
+    event = generate_rand_event(args.sources, tags, args.content, args.content_size)
+    client.send_event(event)
+    print(serializer.serialize(event).decode('UTF-8'))
+    print()
+
+
 def simulate_events(args):
     """Connects and generates random events.
 
@@ -138,13 +147,7 @@ def simulate_events(args):
     ser = EventSerializer()
     tags = [args.tags] if isinstance(args.tags, str) else args.tags
 
-    def send_event():
-        """Generate and send a single event.
-        """
-        event = generate_rand_event(args.sources, tags, args.content, args.content_size)
-        client.send_event(event)
-        print(ser.serialize(event).decode('UTF-8'))
-        print()
+
 
     class _SenderThread(Thread):
         """Sender Thread. Runs continuously.
@@ -160,7 +163,7 @@ def simulate_events(args):
 
             self.is_running = True
             while self.is_running:
-                send_event()
+                _send_event(args, tags, client, ser)
                 time.sleep(args.delay)
 
     sender_thread = _SenderThread()
