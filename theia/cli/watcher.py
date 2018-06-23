@@ -30,7 +30,6 @@ def run_watcher(args):
     from threading import Thread
 
     hostname = socket.gethostname()
-    print(hostname)
 
     loop = asyncio.get_event_loop()
 
@@ -49,4 +48,3 @@ def run_watcher(args):
     loop.add_signal_handler(signal.SIGTERM, loop.stop)
     loop.run_forever()
     loop.close()
-    print("Watcher stopped")
