@@ -26,7 +26,29 @@ def get_parser(subparsers):
 
     parser.add_argument('-l', '--live', action='store_true', dest='live',
                         help='Filter events in real time (live).')
+    parser.add_argument('-F', '--format-output', dest='o_format',
+                        default='{timestamp:15} [{source:10}] {tags:15}: {content}',
+                        metavar='FORMAT_STRING', help='Event output format string.' +
+                        'Available properties are: id, tags, source, timestamp and content.')
+    parser.add_argument('-T', '--format-timestamp', dest='o_ts_format',
+                        default='%Y-%m-%d %H:%M:%S.%f%Z', metavar='DATE_FORMAT_STRING',
+                        help='Timestamp strftime compatible format string')
+    parser.add_argument('--close-timeout', dest='close_timeout', default=10, type=int,
+                        help='Time  (in milliseconds) given to the connecting websocket to ' +
+                        'actually close the connection after receiving close frame form the server. ' +
+                        'The default is 10ms.')
 
+    # Add the filter arguments
+    _setup_filter_arguments(parser)
+
+    return parser
+
+
+def _setup_filter_arguments(parser):
+    """Sets up the filters for the theia query.
+
+    :param argparse.ArgumentParser parser: the ``query`` command parser.
+    """
     parser.add_argument('--id', dest='f_id', metavar='PATTERN',
                         default=None, help='Filter by event id')
     parser.add_argument('-s', '--source', dest='f_source', metavar='PATTERN',
@@ -41,18 +63,6 @@ def get_parser(subparsers):
                         metavar='PATTERN', help='Match any of the tags')
     parser.add_argument('-o', '--order', dest='f_order', default='asc', metavar='ORDERING',
                         help='Order of results (asc or desc). Valid only for "find".')
-    parser.add_argument('-F', '--format-output', dest='o_format',
-                        default='{timestamp:15} [{source:10}] {tags:15}: {content}',
-                        metavar='FORMAT_STRING', help='Event output format string.' +
-                        'Available properties are: id, tags, source, timestamp and content.')
-    parser.add_argument('-T', '--format-timestamp', dest='o_ts_format',
-                        default='%Y-%m-%d %H:%M:%S.%f%Z', metavar='DATE_FORMAT_STRING',
-                        help='Timestamp strftime compatible format string')
-    parser.add_argument('--close-timeout', dest='close_timeout', default=10, type=int,
-                        help='Time  (in milliseconds) given to the connecting websocket to ' +
-                        'actually close the connection after receiving close frame form the server. ' +
-                        'The default is 10ms.')
-    return parser
 
 
 def format_event(event, fmt, datefmt=None):
