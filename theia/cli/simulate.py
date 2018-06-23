@@ -30,7 +30,7 @@ def get_parser():
                                      description='Simulate events (debugging)')
 
     parser.add_argument('-H', '--host', default='localhost', dest='host', help='Collector host')
-    parser.add_argument('-p', '--port', default=6433, dest='port', help='Collector port')
+    parser.add_argument('-p', '--port', default=6433, dest='port', help='Collector port', type=int)
     parser.add_argument('-t', nargs='*', dest='tags', help='Set of tags to choose from')
     parser.add_argument('-s', nargs='*', dest='sources', help='Set of event sources to choose from')
     parser.add_argument('-c', dest='content', default=None,
@@ -146,15 +146,27 @@ def simulate_events(args):
         print(ser.serialize(event).decode('UTF-8'))
         print()
 
-    def send_all():
-        """Generate and send events continuously.
+    class _SenderThread(Thread):
+        """Sender Thread. Runs continuously.
         """
-        while True:
-            send_event()
-            time.sleep(args.delay)
 
-    sender_thread = Thread(target=send_all)
+        def __init__(self):
+            super(_SenderThread, self).__init__()
+            self.is_running = False
+
+        def run(self):
+            """Generate and send events continuously.
+            """
+
+            self.is_running = True
+            while self.is_running:
+                send_event()
+                time.sleep(args.delay)
+
+    sender_thread = _SenderThread()
+    sender_thread.is_running = True
     sender_thread.start()
+
     loop.run_forever()
 
 
