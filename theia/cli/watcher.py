@@ -1,11 +1,24 @@
-from theia.cli.parser import get_parent_parser as parent_parser
+"""
+-----------------
+theia.cli.watcher
+-----------------
+
+Theia file watcher command-line interface.
+
+"""
 
 
 def get_parser(subparsers):
+    """Configures the subparser for the ``watcher`` command.
+
+    :param argparse.ArgumentParser subparser: subparser for commands.
+
+    :returns: :class:`argparse.ArgumentParser` confured for the ``watcher`` command.
+    """
     parser = subparsers.add_parser('watch', help='Watcher daemon')
 
     parser.add_argument('-c', '--collector-server', help='Collector server name (or IP)')
-    parser.add_argument('-p', '--collector-port', default=6433, help='Collector port')
+    parser.add_argument('-p', '--collector-port', default=6433, type=int, help='Collector port')
     parser.add_argument('--secure', action='store_true', help='Secure connection to collector')
 
     parser.add_argument('-f', '--files', nargs='*', dest='files',
@@ -19,15 +32,16 @@ def get_parser(subparsers):
 
 
 def run_watcher(args):
+    """Runs the watcher.
+
+    :param argparse.Namespace args: the parsed arguments passed to the CLI.
+    """
     import socket
     import asyncio
-    import functools
     import signal
-    from theia.comm import Server, Client
+    from theia.comm import Client
     from watchdog.observers import Observer
     from theia.watcher import SourcesDaemon
-
-    from threading import Thread
 
     hostname = socket.gethostname()
 
@@ -40,8 +54,8 @@ def run_watcher(args):
 
     daemon = SourcesDaemon(observer=Observer(), client=client, tags=[hostname])
 
-    for f in args.files:
-        daemon.add_source(fpath=f, tags=args.tags)
+    for file_path in args.files:
+        daemon.add_source(fpath=file_path, tags=args.tags)
 
     loop.add_signal_handler(signal.SIGHUP, loop.stop)
     loop.add_signal_handler(signal.SIGINT, loop.stop)
