@@ -5,6 +5,7 @@ from theia.cli.simulate import (get_parser,
                                 simulate_events)
 from unittest import mock
 from theia.comm import Client
+import asyncio
 
 
 def test_get_parser():
@@ -100,7 +101,8 @@ def test_generate_rand_event():
 
 @mock.patch.object(Client, 'connect')
 @mock.patch.object(Client, 'send_event')
-def test_simulate_events(m_send_event, m_connet):
+@mock.patch.object(asyncio, 'get_event_loop')
+def test_simulate_events(m_get_event_loop, m_send_event, m_connet):
     import threading
     import asyncio
     from collections import namedtuple
@@ -108,7 +110,8 @@ def test_simulate_events(m_send_event, m_connet):
     _Namespace = namedtuple('Namespace', ['host', 'port', 'tags', 'sources', 'content',
                                           'content_size', 'delay'])
     
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    m_get_event_loop.return_value = loop
     
     args = _Namespace(host='localhost', port=11223, tags=['t1', 't2'], sources=['s1', 's2'],
                       content=None, content_size=150, delay=0.1)
