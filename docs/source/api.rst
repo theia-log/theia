@@ -19,3 +19,16 @@ Full API docs
     :members:
 .. automodule:: theia.watcher
     :members:
+.. automodule:: theia.cli.parser
+    :members:
+.. automodule:: theia.cli.collector
+    :members:
+.. automodule:: theia.cli.watcher
+    :members:
+.. automodule:: theia.cli.query
+    :members:
+.. automodule:: theia.cli.simulate
+    :members:
+.. automodule:: theia.cli.tau
+    :members:
+

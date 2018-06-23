@@ -6,19 +6,19 @@ theia.cli.simulate
 Event simulation tool.
 """
 
-from theia.comm import Client
-from theia.model import Event, EventSerializer
 
-from random import randint
+import asyncio
+import time
+from random import randint, shuffle
 from uuid import uuid4
 from datetime import datetime
 from threading import Thread
-
 import argparse
+
 import lorem
-import asyncio
-import time
-import random
+
+from theia.comm import Client
+from theia.model import Event, EventSerializer
 
 
 def get_parser():
@@ -45,16 +45,16 @@ def get_parser():
 
 def generate_content(content=None, size=None):
     """Generate random  (lorem-ipsum style) content.
-    
+
     If ``content`` is provided, just passes through. Otherwise generates 'lorem-ipsum'
     style random content that is of about the provided ``size``. If no size is given,
     then it returns just one sentence.
-    
+
     :param str content: optional, if given, the content to be returned.
     :param int size: optional, the size of the generated content. If not provided,
         then only one sentence is returned. If provided, then generates sentences
         with total size >= ``size``. Always generates full sentences.
-    
+
     :returns: ``str``, the generated content.
     """
     if content is not None:
@@ -73,69 +73,101 @@ def generate_content(content=None, size=None):
 
 def generate_rand_items(items, default):
     """Generates a random subset (``list``) of the provided list of items.
-    
+
     The size of the subset is at least one, and at most is the whole ``items``
     list.
     If no items provided, then returns a list of just one item - the ``default``
     one.
-    
+
     The order of the items in the subset is randomized as well.
-    
+
     :param list items: the list of items to choose from.
     :param default: the default item to choose if no list of items is provided.
-    
-    :returns: (`list`) randomized subset of the items list.
+
+    :returns: :class:`list` randomized subset of the items list.
     """
-    if len(items) == 0:
+    if not items:
         return [default]
 
     if len(items) == 1:
         return items
 
-    rn = randint(1, len(items))
+    rnd_size = randint(1, len(items))
 
     rndi = [n for n in items]
-    random.shuffle(rndi)
+    shuffle(rndi)
 
-    return rndi[0:rn]
+    return rndi[0:rnd_size]
 
 
 def generate_rand_event(sources, tags, content, cnt_size):
+    """Generate random event from the given choices for sources, tags and content.
+
+    :param list sources: list of choices for sources. One random source will be
+        chosen from the list.
+    :param list tags: list of choices for tags. Random subset with random order
+        and size greater than one will be chosen from the given list of tags.
+    :param str content: if not ``None``, that content will be used. If ``None``,
+        random content will be generated.
+    :param int cnt_size: generate content of at least this size. The size of the
+        generated content may be grater (the content always contains full sentences)
+        but it will never be less than ``cnt_size``.
+
+    :returns: a random :class:`theia.model.Event` generated from the given choices
+        values.
+    """
     source = sources[randint(0, len(sources) - 1)]
-    e = Event(id=str(uuid4()), source=source, timestamp=datetime.now().timestamp(),
-              tags=generate_rand_items(tags, 'tag-4'), content=generate_content(content, cnt_size))
-    return e
+    return Event(id=str(uuid4()), source=source, timestamp=datetime.now().timestamp(),
+                 tags=generate_rand_items(tags, 'tag-4'),
+                 content=generate_content(content, cnt_size))
 
 
 def simulate_events(args):
+    """Connects and generates random events.
+
+    The events are generated according to the given arguments.
+
+    :param argparse.Namespace args: the parsed arguments passed to the program.
+
+    """
     loop = asyncio.get_event_loop()
     client = Client(host=args.host, port=args.port, path='/event', loop=loop)
 
-    print('tags', args.tags)
     client.connect()
 
     ser = EventSerializer()
     tags = [args.tags] if isinstance(args.tags, str) else args.tags
 
     def send_event():
-        e = generate_rand_event(args.sources, tags, args.content, args.content_size)
-        client.send_event(e)
-        print(ser.serialize(e).decode('UTF-8'))
+        """Generate and send a single event.
+        """
+        event = generate_rand_event(args.sources, tags, args.content, args.content_size)
+        client.send_event(event)
+        print(ser.serialize(event).decode('UTF-8'))
         print()
 
     def send_all():
+        """Generate and send events continuously.
+        """
         while True:
             send_event()
             time.sleep(args.delay)
 
-    t = Thread(target=send_all)
-    t.start()
+    sender_thread = Thread(target=send_all)
+    sender_thread.start()
     loop.run_forever()
 
 
-if __name__ == '__main__':
+def run_simulate_events():
+    """Run the simulation of events.
+    """
     parser = get_parser()
 
     args = parser.parse_args()
 
     simulate_events(args)
+
+
+
+if __name__ == '__main__':
+    run_simulate_events()

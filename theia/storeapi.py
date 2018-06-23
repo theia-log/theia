@@ -4,7 +4,6 @@ theia.storeapi
 --------------
 
 Event Store API
-^^^^^^^^^^^^^^^
 
 Defines classes, methods and exceptions to be used when implementing an Event Store.
 """
