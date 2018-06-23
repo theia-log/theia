@@ -1,4 +1,4 @@
-from theia.cli.collector import get_parser, get_rdbs_store, run_collector
+from theia.cli.collector import get_parser, get_rdbs_store, run_collector, get_naive_store
 from theia.collector import Collector
 import theia.cli.collector
 import signal
@@ -6,6 +6,7 @@ from argparse import ArgumentParser
 from unittest import mock
 from collections import namedtuple
 import theia.rdbs
+import tempfile
 
 
 def test_get_parser():
@@ -123,4 +124,28 @@ def test_run_collector_naive_store(m_get_naive_store, m_stop, m_run, m_signal):
     state['signal_handler'](15, None)
     
     assert m_stop.call_count == 1
-    
+
+
+def test_get_naive_store():
+    Namespace = namedtuple('argparse_Namespace', ['data_dir'])
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        args = Namespace(data_dir=tmpdir)
+        store = None
+        try:
+            store = get_naive_store(args)
+
+            assert store is not None 
+        finally:
+            if store:
+                store.close()
+
+        
+        error_raised = False
+        args = Namespace(data_dir=None)
+        try:
+            get_naive_store(args)
+        except Exception as e:
+            assert str(e) == 'No data directory specified'
+            error_raised = True
+        assert error_raised is True

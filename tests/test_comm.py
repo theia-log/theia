@@ -167,6 +167,21 @@ def test_client_send_event(m_send, m_recv, m_connect):
     evloop.close()
 
 
+def test_client_close_handlers():
+    mock_close_handler = mock.MagicMock()
+    mock_websocket = mock.MagicMock()
+    
+    client = Client(host='localhost', port=11223, loop=None)
+    client.websocket = mock_websocket
+    
+    client.on_close(mock_close_handler)
+    
+    client._closed(code=1006, reason='unit test')
+    
+    assert mock_close_handler.called_once_with(mock_websocket, 1006, 'unit test')
+
+
+
 def test_start_server():
     loop = asyncio.new_event_loop()
 
@@ -290,7 +305,7 @@ def test_server_close_handler(m_close, m_send, m_recv):
     
     def ws_close_handler(ws, path):
         assert ws == webocket
-        assert path == '/test-path'
+        assert path == 'test-path'
     
     mock_handler = mock.MagicMock()
     mock_handler.side_effect = ws_close_handler
@@ -319,21 +334,10 @@ def test_server_close_handler(m_close, m_send, m_recv):
     assert ser.port == 11223
     assert ser._started == True
     
-    def stop_server():
-        ser.stop()
-        print(' >> server stop')
-        sleep(1)
-        print(' >> about to loop.stop')
-        loop.call_soon_threadsafe(loop.stop)
-        print(' >> thread exit')
-    
-    t = Thread(target=stop_server)
-    
-    asyncio.ensure_future(ser._on_client_connection(websocket, '/test-path'), loop=loop)
-    #t.start()
+    asyncio.ensure_future(ser._on_client_connection(websocket, 'test-path'), loop=loop)
+
     loop.run_forever()
     print(' *** loop done ***')
-    #t.join()
     for t in asyncio.Task.all_tasks(loop):
         t.cancel() # cancel the asyncio.wait
         print('[CANCEL]',t)
