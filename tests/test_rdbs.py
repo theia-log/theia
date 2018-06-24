@@ -6,6 +6,22 @@ from datetime import datetime
 from uuid import uuid4
 from random import randint, shuffle
 
+
+def test_event_record():
+    e1 = EventRecord(id='001', timestamp=1000, tags='t1,t2', source='s1',
+                     content='test-content')
+    e2 = EventRecord(id='001', timestamp=1000, tags='t1,t2', source='s1',
+                     content='test-content')
+    e3 = EventRecord(id='002', timestamp=1000, tags='t1,t2', source='s1',
+                     content='test-content')
+    
+    assert e1 == e2
+    assert e1 != e3
+    assert e2 != e3
+    
+    assert hash(e1) == hash(e1.id)
+
+
 def test_match_any():
     assert match_any(re.compile('test'), ['te', 'test', 'este']) == True
     assert match_any(re.compile('.est'), ['te', 'test', 'este']) == True

@@ -1,35 +1,40 @@
+"""Theia CLI entrypoint.
+"""
 from theia.cli.parser import get_parent_parser
 from theia.cli.watcher import get_parser as get_watcher_parser, run_watcher
-import theia.cli.watcher as watcher_cli
 from theia.cli.collector import get_parser as get_collector_parser, run_collector
-import theia.cli.collector as collector_cli
 from theia.cli.query import get_parser as get_query_parser, run_query
 
-parser = get_parent_parser('theia', 'Theia CLI')
+def run_cli():
+    """Run theia CLI.
+    """
+    parser = get_parent_parser('theia', 'Theia CLI')
 
-subparsers = parser.add_subparsers(dest='command', title='command', help='CLI commands')
-get_watcher_parser(subparsers)
-get_collector_parser(subparsers)
-get_query_parser(subparsers)
-
-args = parser.parse_args()
+    subparsers = parser.add_subparsers(dest='command', title='command', help='CLI commands')
+    get_watcher_parser(subparsers)
+    get_collector_parser(subparsers)
+    get_query_parser(subparsers)
 
 
+    args = parser.parse_args()
 
-if args.version:
-    from theia.metadata import version
-    from sys import exit
-    print('theia', version)
-    exit(0)
 
-if args.verbose:
-    from logging import basicConfig, DEBUG
-    basicConfig(level=DEBUG)
+    if args.version:
+        from theia.metadata import version
+        import sys
+        print('theia', version)
+        sys.exit(0)
 
-if args.command == 'watch':
-    run_watcher(args)
-elif args.command == 'collect':
-    collector_cli.run_collector(args)
-elif args.command == 'query':
-    run_query(args)
+    if args.verbose:
+        from logging import basicConfig, DEBUG
+        basicConfig(level=DEBUG)
 
+    if args.command == 'watch':
+        run_watcher(args)
+    elif args.command == 'collect':
+        run_collector(args)
+    elif args.command == 'query':
+        run_query(args)
+
+
+run_cli()
