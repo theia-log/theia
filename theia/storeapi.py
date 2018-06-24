@@ -54,28 +54,29 @@ class EventStore:
         The storage will try to look up the event with the specified id:
 
         * if the event is found, it will return an Event object
-        * the event is not found, raises an EventNotFound excepton.
+        * the event is not found, raises an EventNotFound exception.
 
         Edge cases:
 
         * If the event is being inserted AFTER the get(..) operation is invoked,
             there is NO guarantee that it will be fetched.
         * If the event is being inserted BEFORE the get(..)  operation is invoked,
-            but that transaction is still not commited, the operaton will block
+            but that transaction is still not committed, the operation will block
             until the write operation completes (or errors out) and the Event will
-            be returned (if the write succeds) or will error out (if the write
+            be returned (if the write succeeds) or will error out (if the write
             fails) - strict consistency
 
         **Note:**
             Some specific implementations may break the strict consistency if the
             underlying mechanism does not provide means to implement it. In those
             cases, the subclass must override this documentation and must document
-            its exact for the above edge-cases.
+            its exact for the above edge cases.
 
         :param event_id: ``str``, the unique identifier of the event to be looked up.
 
-        Returns the :class:`theia.model.Event` with the given id, or ``None`` if no such
-        event exists.
+        :returns: the :class:`theia.model.Event` with the given id, or ``None`` if no such
+            event exists.
+
         """
         pass
 
@@ -84,9 +85,9 @@ class EventStore:
         """Performs a search for events matching events in the specified time range.
 
         :param ts_start: ``float``, start of the time range. Matching events with timestamp bigger
-            or equal to this paramter will be returned.
+            or equal to this parameter will be returned.
         :param ts_end: ``float``, end of the time range. Matching events with timestamp smaller or
-            equal to this paramter will be returned.
+            equal to this parameter will be returned.
         :param flags: ``list``,  events that have ALL of the flags will be returned.
         :param match: ``str``, regular expression, (restricted to a subset of the full regexp
             support) to match the event content against.

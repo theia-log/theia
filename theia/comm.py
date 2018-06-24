@@ -103,8 +103,9 @@ class Client:
 
         :param message: ``str``, the message to be sent to the remote server.
 
-        Returns the :class:`asyncio.Handle` to the scheduled task for sending the
-        actual data.
+        :returns: the :class:`asyncio.Handle` to the scheduled task for sending the
+            actual data.
+
         """
         return self.loop.call_soon_threadsafe(self._call_send, message)
 
@@ -118,8 +119,9 @@ class Client:
 
         :param event: :class:`theia.model.Event`, the event to be send.
 
-        Returns the :class:`asyncio.Handle` to the scheduled task for sending the
-        actual data.
+        :returns: the :class:`asyncio.Handle` to the scheduled task for sending the
+            actual data.
+
         """
         message = self.serializer.serialize(event)
         return self.send(message)
@@ -179,7 +181,7 @@ class Client:
     def is_open(self):
         """Check if the client connection is open.
 
-        Returns ``True`` if the client connection is open, otherwise ``False``.
+        :returns: ``True`` if the client connection is open, otherwise ``False``.
         """
         return self._is_open
 

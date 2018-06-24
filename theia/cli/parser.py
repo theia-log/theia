@@ -18,7 +18,7 @@ def get_parent_parser(name, desc=''):
     :param str name: the name of the program.
     :param str desc: program description.
 
-    Returns the configured :class:`argparse.ArgumentParser`.
+    :returns: configured :class:`argparse.ArgumentParser`.
     """
     parser = argparse.ArgumentParser(prog=name, description=desc)
 

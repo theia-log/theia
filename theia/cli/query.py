@@ -20,7 +20,7 @@ def get_parser(subparsers):
 
     :param argparse.ArgumentParser subparser: subparser for commands.
 
-    Returns :class:`argparse.ArgumentParser` confured for the ``query`` command.
+    :returns: :class:`argparse.ArgumentParser` configured for the ``query`` command.
     """
     parser = subparsers.add_parser('query', help='Query for events')
 
@@ -73,7 +73,7 @@ def format_event(event, fmt, datefmt=None):
     :param str datefmt: alternative date format for formatiig the event timestamp.
         The format must be compatible with :func:`datetime.strftime`
 
-    Returns the formatted event as string.
+    :returns: the formatted event as string.
     """
     data = {
         "id": event.id,
@@ -123,8 +123,9 @@ def event_printer(event_format, time_format, parser):
     :param str time_format: alternative format for the event timestamp.
     :param theia.model.EventParser: event parser
 
-    Returns event printer that takes an event data and formats is based on the
-    above formats.
+    :returns: event printer that takes an event data and formats is based on the
+        above formats.
+
     """
 
     def print_event(evdata):

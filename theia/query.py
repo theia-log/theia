@@ -106,7 +106,7 @@ class Query:
         :param callback: ``function``, called with the matching event content. The method takes one argument, the
             serialized :class:`theia.model.Event`.
 
-        Returns a :class:`ResultHandler`.
+        :returns: a :class:`ResultHandler`.
         """
         return self._connect_and_send('/live', criteria, callback)
 
@@ -129,7 +129,7 @@ class Query:
         :param callback: ``function``, called with the matching event content. The method takes one argument, the
             serialized :class:`theia.model.Event`.
 
-        Returns a :class:`ResultHandler`.
+        :returns: a :class:`ResultHandler`.
         """
         return self._connect_and_send('/find', criteria, callback)
 

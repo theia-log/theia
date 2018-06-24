@@ -112,7 +112,7 @@ class RDBSEventStore(EventStore):
 
         :param event_id(str): the event id.
 
-        Returns a ``theia.model.Event`` if the event was found or ```theia.storeapi.EventNotFound``` if
+        :returns: a ``theia.model.Event`` if the event was found or ```theia.storeapi.EventNotFound``` if
         no such event can be found.
         """
         sess = self._session()
@@ -143,7 +143,7 @@ class RDBSEventStore(EventStore):
         :param order(str): either ``asc`` or ``desc`` - sort the results ascending or descending based on the
         event timestamp.
 
-        Returns an iterator over all matched results.
+        :returns: an iterator over all matched results.
         """
         if not ts_start:
             raise EventStoreException('start timestamp is required when searching events')
@@ -219,7 +219,7 @@ def match_any(matcher, values):
     :param matcher(regex pattern): compiled regular expression.
     :param values(list): list of ``str`` values to match.
 
-    Returns ``True`` if *any* of the ``str`` values matches (fullmatch) the matcher;
+    :returns: ``True`` if *any* of the ``str`` values matches (fullmatch) the matcher;
     otherwise ``False``.
     """
     for val in values:
@@ -229,14 +229,14 @@ def match_any(matcher, values):
 
 
 def match_all(matchers, values):
-    """Check if *all* matchers matchy any of the given values.
+    """Check if *all* matchers match any of the given values.
 
     Each matcher *must* match at least one value of the list of values.
 
     :param matchers(list): list of compiled regular expressions.
     :param values(list): list of ``str`` to match
 
-    Returns ``True`` only if *all* of the matchers have matched at least one value of the provided
+    :returns: ``True`` only if *all* of the matchers have matched at least one value of the provided
     list of values.
     """
     for matcher in matchers:
@@ -250,7 +250,7 @@ def create_store(db_url, verbose=False):
     :param db_url(str): The database URL in SQLAlchemy form.
     :param verbose(bool): ``True`` to show extended messages from the store.
 
-    Returns RDBSEventStore object.
+    :returns: RDBSEventStore object.
     """
     engine = create_engine(db_url, echo=verbose)
     Base.metadata.create_all(engine)

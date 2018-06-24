@@ -3,7 +3,7 @@
 theia.collector
 ---------------
 
-The log aggregator collector server imlementation.
+The log aggregator collector server implementation.
 """
 import asyncio
 from io import BytesIO
@@ -49,8 +49,8 @@ class LiveFilter:
 
         :param event: :class:`theia.model.Event`, the event to match.
 
-        Returns:
-            match(``bool``), True if the event matches the criteria, otherwise False.
+        :returns: match(``bool``), True if the event matches the criteria,
+            otherwise False.
         """
 
         return event.match(**self.criteria)
@@ -137,7 +137,7 @@ class Collector:
     def stop(self):
         """Stop the collector server.
 
-        This operation is non-blocking.
+        This operation is non blocking.
         """
 
         self.server.stop()

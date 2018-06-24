@@ -2,15 +2,15 @@ Connector Websocket API
 =======================
 
 Theia collector is the main process that aggregates events from multiple sources.
-This is a WebSocker socket server that exposes endpoints for pushing and retrieving
+This is a WebSocket socket server that exposes endpoints for pushing and retrieving
 events. When retrieving events, the client must always supply a filter.
 
-All exposed APIs are designed as event-streams - i.e you can push event at any 
-time reusing the same websocket without specifiying the number of events that will
-be pushed. Similarily when retrieving events, you will receive the filter results
+All exposed APIs are designed as event streams - i.e you can push event at any 
+time reusing the same websocket without specifying the number of events that will
+be pushed. Similarly when retrieving events, you will receive the filter results
 without notification of the number of total matching events. The client will receive
-an event data message asynchornously - the only guarantee is that the event message
-itself is consistent (you won't receive a half-message, either the full event 
+an event data message asynchronously - the only guarantee is that the event message
+itself is consistent (you won't receive a half message, either the full event 
 passes through or none of it).
 
 The collector exposes a real-time event stream as well that pushes events that match
@@ -21,9 +21,9 @@ Event model
 
 Each event is a textual message consisting of the following properties:
 
-* ``id`` - the event ID. This value is unique accross the whole system.
+* ``id`` - the event ID. This value is unique across the whole system.
 * ``timestamp`` - the time (and) date when the event was created. This is a UNIX-like timestamp, but may contain nanoseconds info.
-* ``source`` - the source of the event. It may be the path of the log file being watched for chnages, name of the sensor generating the event etc.
+* ``source`` - the source of the event. It may be the path of the log file being watched for changes, name of the sensor generating the event etc.
 * ``tags`` - comma separated list of values acting as tags. Example: ``web,httpd,access-log,server1,datacenter3``
 * ``content`` - the actual content of the event. Plain text.
 
@@ -66,7 +66,7 @@ Custom header fields may be added later on, but the current implementation suppo
 and understands only the above four headers. The custom fields are not processed
 in any way, but are stored and returned to the clients. Currently the header lines
 order is not guaranteed to be preserved.
-Each header **MUST** be on a single line. It the client sends multilne value
+Each header **MUST** be on a single line. It the client sends multiline value
 for a header, the collector will accept the value up until the line end and will
 ignore the rest.
 
@@ -91,7 +91,7 @@ Find events matching criteria
 
 Opens channel to find events that match some criteria.
 The events are pushed from the collector to the client (on the incoming port of 
-the web socket). The client should only post one message containng the filter 
+the web socket). The client should only post one message containing the filter 
 criteria by which to match the events.
 This looks up only persisted events and will not return events in real-time, only
 those received **before** this channel was opened.
@@ -121,6 +121,7 @@ Where:
 
 Match all events after a timestamp that have a tag ``log`` on any ``web-server`` 
 and contain ``[ERROR]``:
+
     .. code-block:: javascript
         
         {
@@ -144,10 +145,10 @@ Real-time event stream
 Opens channel to monitor for events matching a certain criteria.
 The client can open a channel to the collector to monitor for incoming events
 that match the client criteria. 
-This endpoint will **not** lookup events in the perisistent storage, but matches
-only the events comming to the collector **after** the channel was opened.
+This endpoint will **not** lookup events in the persistent storage, but matches
+only the events coming to the collector **after** the channel was opened.
 
-The collector does not close this channel. If a timeout occurs due to inactiviy,
+The collector does not close this channel. If a timeout occurs due to inactivity,
 then the client must initiate new websocket connection.
 
 The first message sent to the collector after establishing the channel **must**
@@ -179,6 +180,7 @@ Where:
 
 Match all events after a timestamp that have a tag ``log`` on any ``web-server`` 
 and contain ``[ERROR]`` from the ``/var/log`` files (source):
+
     .. code-block:: javascript
         
         {

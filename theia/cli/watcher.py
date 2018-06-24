@@ -3,7 +3,7 @@
 theia.cli.watcher
 -----------------
 
-Theia file watcher command-line interface.
+Theia file watcher command line interface.
 
 """
 
@@ -13,7 +13,7 @@ def get_parser(subparsers):
 
     :param argparse.ArgumentParser subparser: subparser for commands.
 
-    :returns: :class:`argparse.ArgumentParser` confured for the ``watcher`` command.
+    :returns: :class:`argparse.ArgumentParser` configured for the ``watcher`` command.
     """
     parser = subparsers.add_parser('watch', help='Watcher daemon')
 

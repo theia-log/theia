@@ -8,7 +8,8 @@ Use your package manager to install python3 and pip.
 Installing with pip
 -------------------
 
-To install with pip, just run::
+To install with pip, just run:
+
     .. code-block:: shell
     
         pip install theia
@@ -39,12 +40,14 @@ Install with git
     
 First cd to the directory where you want to checkout the source code, and clone 
 the repository:
+
     .. code-block:: shell
     
         cd ~/projects/workspace
         git clone https://github.com/theia-log/theia
 
 Then cd to the theia directory and create the virtual environment:
+
     .. code-block:: shell
     
         cd theia
@@ -52,6 +55,7 @@ Then cd to the theia directory and create the virtual environment:
         source ENV/dev/bin/activate
 
 Then install the requirements:
+
     .. code-block:: shell
         
         pip install -r requirements.txt
@@ -61,6 +65,7 @@ Install with pip
 ^^^^^^^^^^^^^^^^
 
 First make sure you have your virtual environment set up and activated:
+
     .. code-block:: shell
     
         cd ~/projects/workspace
@@ -70,11 +75,13 @@ First make sure you have your virtual environment set up and activated:
 
 Go to the directory where you want to checkout the source code, install with pip
 from the Github repository:
+
     .. code-block:: shell
         
         pip install -e "git+https://github.com/theia-log/theia#egg=theia"
 
 Confirm you've have the package properly installed:
+
     .. code-block:: shell
         
         python -m theia.cli --help
@@ -82,6 +89,7 @@ Confirm you've have the package properly installed:
 You should see the help message.
 
 Then cd to the source directory in your ENV:
+
     .. code-block:: shell
         
         cd ENV/dev/src/theia

@@ -126,7 +126,7 @@ class Event:
             match the :class:`Event` tags. Matches true only if **all** of the provided
             criteria match the Event tags.
 
-        Returns ``True`` if this :class:`Event` matches the criteria, otherwise ``False``.
+        :returns: ``True`` if this :class:`Event` matches the criteria, otherwise ``False``.
         """
         return all([self._match_header_id_and_source(id, source),
                     self._match_timestamp(start, end),
@@ -226,7 +226,7 @@ class EventSerializer:
 
         :param event: :class:`Event`, the event to be serialized.
 
-        Returns the serialized event as ``bytes``.
+        :returns: the serialized event as ``bytes``.
         """
         event_str = ''
         hdr = self._serialize_header(event)
@@ -289,7 +289,7 @@ class EventParser:
             in bytes.
         :param stream: :class:`io.BytesIO`, the incoming stream to parse.
 
-        Returns the parsed :class:`Header` for the event.
+        :returns: the parsed :class:`Header` for the event.
 
         Raises :class:`Exception` if an unknown property is encountered in the header.
         """
@@ -335,7 +335,7 @@ class EventParser:
 
         :param stream: :class:`io.BytesIO`, the stream to parse.
 
-        Returns the parsed :class:`EventPreamble` from the incoming stream.
+        :returns: the parsed :class:`EventPreamble` from the incoming stream.
         """
         pstr = stream.readline()
         if not pstr:
@@ -370,7 +370,7 @@ class EventParser:
         :param skip_content: ``bool``, whether to skip the fetching of the content and
             to fetch only the :class:`Event` header. Default is ``False``.
 
-        Returns the parsed :class:`Event` from the incoming stream.
+        :returns: the parsed :class:`Event` from the incoming stream.
         """
         preamble = self.parse_preamble(stream)
         header = self.parse_header(preamble.header, stream)

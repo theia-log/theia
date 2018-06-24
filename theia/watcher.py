@@ -5,7 +5,7 @@ theia.watcher
 
 File watcher.
 
-Watches files and directories for changes and emits the chnages as events.
+Watches files and directories for changes and emits the changes as events.
 """
 from os.path import getsize, isfile, isdir, split as splitpath, realpath
 from time import time

@@ -19,7 +19,7 @@ def get_parser(subparsers):
 
     :param argparse.ArgumentParser subparser: subparser for commands.
 
-    Returns :class:`argparse.ArgumentParser` confured for the ``collect`` command.
+    :returns: :class:`argparse.ArgumentParser` configured for the ``collect`` command.
     """
     parser = subparsers.add_parser('collect', help='Collector server')
 

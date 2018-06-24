@@ -203,12 +203,14 @@ class SequentialEventReader:
 
     def __enter__(self):
         """Implements the context-manager enter method.
-        Returns a reference to itself.
+
+        :returns: a reference to itself.
         """
         return self
 
     def __exit__(self, *args):
         """Implements the context-manager exiting method.
+
         Closes the underlying stream.
         """
         self.stream.close()
@@ -305,8 +307,8 @@ def binary_search(datafiles, timestamp):
         timestamp.
     :param timestamp: ``float``, the timestamp to serch for.
 
-    Returns the index (``int``) of the first :class:`DataFile` in the list that contains event that occurred at or
-    after the provided timestamp. Returns ``None`` if no such data file can be found.
+    :returns: the index (``int``) of the first :class:`DataFile` in the list that contains event that occurred at or
+        after the provided timestamp. Returns ``None`` if no such data file can be found.
     """
     start = 0
     end = len(datafiles) - 1
@@ -376,8 +378,9 @@ class FileIndex:
             to ``ts_to``. If ``0`` or ``None`` is passed for this parameter, then the end of the time span is open,
             meaning this parameter will be ignore in the search.
 
-        Returns a ``list`` of :class:`DataFile` files that contain the events within the given interval. Returns
-        ``None`` if there are no files containing events within the given interval.
+        :returns: a ``list`` of :class:`DataFile` files that contain the events within the given interval. Returns
+            ``None`` if there are no files containing events within the given interval.
+
         """
         idx = binary_search(self.files, ts_from)
         if idx is None and self.files:
@@ -404,7 +407,7 @@ class FileIndex:
 
         :param timestamp: ``int``, the timestamp of the event.
 
-        Returns the :class:`DataFile` containing the event, or ``None`` if it cannot be found.
+        :returns: the :class:`DataFile` containing the event, or ``None`` if it cannot be found.
         """
         idx = binary_search(self.files, timestamp)
         if idx is not None:
