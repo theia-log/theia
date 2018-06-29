@@ -335,3 +335,61 @@ def test_find_events(m_search, m_send):
     t.join()
     
     assert len(ws_messages) == 3
+
+
+def test_live_pipe_add_error_handler():
+    error_handler = mock.MagicMock()
+    live = Live(serializer=None)
+    
+    live.add_error_handler(error_handler)
+    
+    assert live.error_handlers
+    assert error_handler in live.error_handlers
+
+
+def test_live_pipe_call_error_handler():
+    error_handler = mock.MagicMock()
+    live = Live(serializer=None)
+    
+    live.add_error_handler(error_handler)
+    
+    assert live.error_handlers
+    assert error_handler in live.error_handlers
+    
+    err = Exception('test-err')
+    websocket = mock.MagicMock()
+    live_filter = mock.MagicMock()
+    live._handle_error(err=err, websocket=websocket, live_filter=live_filter)
+    
+    assert error_handler.called_once_with(err, websocket, live_filter)
+
+
+def test_live_pipe_handle_error():
+    from websockets.exceptions import ConnectionClosed
+    error_handler = mock.MagicMock()
+    live = Live(serializer=None)
+    
+    live.add_error_handler(error_handler)
+    
+    websocket = mock.MagicMock()
+    websocket.send = mock.MagicMock()
+    websocket.send.side_effect = ConnectionClosed(code=1006, reason='socket closed')
+    
+    assert live.error_handlers
+    assert error_handler in live.error_handlers
+    
+    live_filter = LiveFilter(ws=websocket, criteria={})
+    
+    live.add_filter(live_filter)
+    
+    assert live.filters
+    assert websocket in live.filters
+    
+    loop = asyncio.new_event_loop()
+    loop.run_until_complete(live.pipe(Event(id='event-0', source='src-0', timestamp=10)))
+    loop.close()
+
+    assert live.filters is not None
+    assert websocket not in live.filters
+    
+    

@@ -10,9 +10,11 @@ from io import BytesIO
 import json
 from logging import getLogger
 from threading import Thread
+
+from websockets.exceptions import ConnectionClosed
+
 from theia.comm import Server
 from theia.model import EventParser, EventSerializer
-
 
 
 log = getLogger(__name__)
@@ -68,6 +70,8 @@ class Live:
     def __init__(self, serializer):
         self.serializer = serializer
         self.filters = {}
+        self.error_handlers = []
+        self.add_error_handler(self._default_error_handler)
 
     def add_filter(self, lfilter):
         """Adds new filter to the pipeline.
@@ -76,6 +80,33 @@ class Live:
         """
         self.filters[lfilter.ws] = lfilter
 
+    def add_error_handler(self, handler):
+        """Adds error handler. The handler will be called for each error that occurs
+        while processing the filters in this live pipe.
+
+        :param function handler: error handler callback. The handler has the following prototype:
+
+            .. code-block:: python
+
+                def handler(err, websocket, live_filter):
+                    pass
+
+            where:
+
+            * ``err`` (:class:`Exception`) the actual error.
+            * ``websocket`` (:class:`websockets.WebSocketClientProtocol`) reference to the WebSocket instance.
+            * ``live_filter`` (:class:`LiveFilter`) filter criteria.
+
+        """
+        self.error_handlers.append(handler)
+
+    def _handle_error(self, err, websocket, live_filter):
+        for handler in self.error_handlers:
+            try:
+                handler(err, websocket, live_filter)
+            except Exception as e:
+                log.warning('Error while handling exception: %s', e)
+
     async def pipe(self, event):
         """Add an event to the live pipeline.
 
@@ -83,7 +114,11 @@ class Live:
 
         :param event: :class:`theia.model.Event`, the event to be pipelined.
         """
-        for ws, live_filter in self.filters.items():
+        # we have to clone the filters dict to allow the filters to be altered by the error handlers during iteration.
+        filters_clone = {}
+        filters_clone.update(self.filters)
+
+        for ws, live_filter in filters_clone.items():
             if live_filter.match(event):
                 try:
                     result = None
@@ -95,8 +130,15 @@ class Live:
                         log.debug('Serialization error: %s', se)
                     await ws.send(result)
                 except Exception as e:
-                    log.error('Something went wrong: %s', e)
-                    log.exception(e)
+                    log.debug('Error happened when processing and sending to pipe: %s', e)
+                    self._handle_error(e, ws, live_filter)
+
+    def _default_error_handler(self, err, websocket, live_filter):
+        if isinstance(err, ConnectionClosed):
+            if self.filters.get(websocket):
+                del self.filters[websocket]
+        else:
+            log.error('Error in pipe: %s', err)
 
 
 class Collector:
