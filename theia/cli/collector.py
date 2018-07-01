@@ -31,6 +31,8 @@ def get_parser(subparsers):
     parser.add_argument('--rdbs-store', dest='rdbs_store', action='store_true',
                         help='Use RDBS EventStore instead of NaiveEventStore.' +
                         'The RDBS store keeps the events in a relational database.')
+    parser.add_argument('--live', dest='live_mode', action='store_true',
+                        help='Run the collector in live (non persistent) mode. Events will not be stored.')
 
     return parser
 
@@ -54,7 +56,8 @@ def run_collector(args):
         store = get_naive_store(args)
         log.info('Using Naive Event Store')
 
-    collector = Collector(store=store, hostname=args.server_host, port=args.port)
+    persistent = not args.live_mode
+    collector = Collector(store=store, hostname=args.server_host, port=args.port, persistent=persistent)
 
     def stop_collector(sig, frame):
         """Signal handler that stops the collector.

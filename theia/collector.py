@@ -153,7 +153,7 @@ class Collector:
     """
 
     # pylint: disable=too-many-instance-attributes
-    def __init__(self, store, hostname='0.0.0.0', port=4300):
+    def __init__(self, store, hostname='0.0.0.0', port=4300, persistent=True):
         self.hostname = hostname
         self.port = port
         self.server = None
@@ -165,15 +165,23 @@ class Collector:
         self.parser = EventParser()
         self.serializer = EventSerializer()
         self.live = Live(self.serializer)
+        self.persistent = persistent
 
     def run(self):
         """Run the collector server.
 
         This operation is blocking.
         """
-        self._setup_store()
+        if self.persistent:
+            self._setup_store()
+
         self._setup_server()
-        self.store_thread.join()
+
+        if self.persistent:
+            self.store_thread.join()
+        else:
+            log.info('Collector will not persist the events. To persist the events please run it in persistent mode.')
+
         self.server_thread.join()
 
     def stop(self):
@@ -184,10 +192,12 @@ class Collector:
 
         self.server.stop()
         try:
-            self.store_loop.call_soon_threadsafe(self.store_loop.stop)
+            if self.persistent:
+                self.store_loop.call_soon_threadsafe(self.store_loop.stop)
         finally:
             self.server_loop.call_soon_threadsafe(self.server_loop.stop)
-        self.store.close()
+        if self.store:
+            self.store.close()
 
     def _setup_store(self):
         def run_store_thread():
@@ -230,7 +240,8 @@ class Collector:
 
     def _store_event(self, message):
         event = self.parser.parse_event(BytesIO(message))
-        self.store.save(event)
+        if self.persistent:
+            self.store.save(event)
         try:
             asyncio.run_coroutine_threadsafe(self.live.pipe(event), self.server_loop)
         except Exception as e:
@@ -243,6 +254,8 @@ class Collector:
         return 'ok'
 
     def _find_event(self, path, message, websocket, resp):
+        if not self.persistent:
+            return '{"error": "Action not available in non-persistent mode."}'
         criteria = json.loads(message)
         ts_from = criteria.get('start')
         ts_to = criteria.get('end')

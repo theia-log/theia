@@ -34,6 +34,9 @@ def test_get_parser():
     
     args = parser.parse_args(args=['--rdbs-store'])
     assert args.rdbs_store is True
+    
+    args = parser.parse_args(args=['--live'])
+    assert args.live_mode is True
 
 
 @mock.patch.object(theia.rdbs, 'create_store')
@@ -66,7 +69,7 @@ def test_run_collector_rdbs_store(m_get_rdbs_store, m_stop, m_run, m_signal):
     
     Namespace = namedtuple('argparse_Namespace', ['db_url', 'store_verbose',
                                                    'rdbs_store','server_host',
-                                                   'port'])
+                                                   'port', 'live_mode'])
     
     state = {}
     
@@ -77,7 +80,7 @@ def test_run_collector_rdbs_store(m_get_rdbs_store, m_stop, m_run, m_signal):
     m_signal.side_effect = fake_signal
     
     args = Namespace(db_url='db://url', store_verbose=True, rdbs_store=True,
-                     server_host='localhost', port=9089)
+                     server_host='localhost', port=9089, live_mode=False)
     
     run_collector(args)
     
@@ -98,7 +101,7 @@ def test_run_collector_rdbs_store(m_get_rdbs_store, m_stop, m_run, m_signal):
 @mock.patch.object(theia.cli.collector, 'get_naive_store')
 def test_run_collector_naive_store(m_get_naive_store, m_stop, m_run, m_signal):
     Namespace = namedtuple('argparse_Namespace', ['data_dir', 'store_verbose', 'rdbs_store',
-                                                  'server_host', 'port'])
+                                                  'server_host', 'port', 'live_mode'])
     
     mock_store = mock.MagicMock()
     m_get_naive_store.return_value = mock_store
@@ -111,7 +114,7 @@ def test_run_collector_naive_store(m_get_naive_store, m_stop, m_run, m_signal):
     m_signal.side_effect = fake_signal
     
     args = Namespace(data_dir='/tmp/data', store_verbose=True, rdbs_store=False,
-                     server_host='localhost', port=9089)
+                     server_host='localhost', port=9089, live_mode=False)
     
     run_collector(args)
     
