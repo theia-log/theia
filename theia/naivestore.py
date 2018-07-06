@@ -70,7 +70,7 @@ from collections import namedtuple
 import re
 import time
 from logging import getLogger
-from theia.storeapi import EventStore
+from theia.storeapi import EventStore, EventStoreException
 from theia.model import EventSerializer, EventParser, EOFException
 
 
@@ -507,10 +507,14 @@ class NaiveEventStore(EventStore):
             self.write_lock.release()
 
     def search(self, ts_start, ts_end=None, flags=None, match=None, order='asc'):
+        if order not in ['asc', 'desc']:
+            raise EventStoreException('Order must be one of "asc" or "desc".')
         data_files = self.index.find(ts_start, ts_end)
+        match_fn = self._match_forward if order == 'asc' else self._match_reverse
         if data_files:
             for data_file in data_files:
-                yield from self._search_data_file(data_file, ts_start, ts_end, flags, match, order == 'desc')
+                for event in match_fn(data_file, ts_start, ts_end, flags, match):
+                    yield event
 
     def close(self):
         self._flush_open_files()
@@ -533,11 +537,7 @@ class NaiveEventStore(EventStore):
                         yield event
 
     def _match_reverse(self, data_file, ts_start, ts_end, flags, match):
-        matched = []
-        for result in self._match_forward(data_file, ts_start, ts_end, flags, match):
-            matched.append(result)
-        for result in reversed(matched):
-            yield result
+        raise Exception('Reverse order (desc) not supported right now.')
 
     def _seq_event_parser(self, data_file):
         return SequentialEventReader(open(data_file.path, 'rb'), EventParser())

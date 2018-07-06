@@ -264,12 +264,24 @@ class Collector:
         order = criteria.get('order') or 'asc'
         if not ts_from:
             raise Exception('Missing start timestamp')
-        self.store_loop.call_soon_threadsafe(
-            self._find_event_results, ts_from, ts_to, flags, content, order, websocket)
+        asyncio.run_coroutine_threadsafe(self._find_event_results(start=ts_from,
+                                                                  end=ts_to,
+                                                                  flags=flags,
+                                                                  match=content,
+                                                                  order=order,
+                                                                  websocket=websocket),
+                                         self.store_loop)
+        print("::scheduled _find_event: ", path, message, websocket, resp)
         return 'ok'
 
-    def _find_event_results(self, start, end, flags, match, order, websocket):
+    async def _find_event_results(self, start, end, flags, match, order, websocket):
+        print("Find event results", websocket)
         for event in self.store.search(ts_start=start, ts_end=end, flags=flags,
                                        match=match, order=order):
-            ser = self.serializer.serialize(event)
-            asyncio.run_coroutine_threadsafe(websocket.send(ser), self.server_loop)
+            await self._send_result(event, websocket)
+            await asyncio.sleep(0, loop=self.store_loop)  # let other tasks run
+
+    async def _send_result(self, event, websocket):
+        ser = self.serializer.serialize(event)
+        result = asyncio.run_coroutine_threadsafe(websocket.send(ser), self.server_loop)
+        result.result()
