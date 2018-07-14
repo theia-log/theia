@@ -98,6 +98,13 @@ Example of sending events to the collector (using `wscat <https://github.com/web
 ``/find`` - Find events matching criteria
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+**Endpoint params**
+
+* **Path**: ``/find``
+* **Params**: None
+* **Message Payload**: first message body must be Criteria JSON.
+* **Response**: Event stream
+
 Opens channel to find events that match some criteria.
 The events are pushed from the collector to the client (on the incoming port of 
 the web socket). The client should only post one message containing the filter 
@@ -123,7 +130,7 @@ Where:
 * ``start`` - ``int``, *optional*: match events **after** this timestamp (UNIX).
 * ``end`` - ``int``, *optional*: match events **before** this timestamp (UNIX).
 * ``tags`` - array of ``string``, *optional*: match the events matching any of the supplied tags. The values are processed as regular expressions.
-* ``context`` - ``string`` regular expression, *optional*: match the eventa with content matching to the supplied content regex.
+* ``content`` - ``string`` regular expression, *optional*: match the eventa with content matching to the supplied content regex.
 * ``order`` - ``string`` one of ``asc`` or ``desc``, *optinal*: sort order for the result. The sort is performed by the event timestamp. By default it returns the events in ascending order (``asc``) which means earlier events are returned first.
 
 **Example**
@@ -139,17 +146,35 @@ and contain ``[ERROR]``:
             "content": ".*\[ERROR\].*"
         }
 
+Example (assuming the collector runs on localhost):
 
-**Endpoint params**
+.. code-block:: text
 
-* **Path**: ``/find``
-* **Params**: None
-* **Message Payload**: first message body must be Criteria JSON.
-* **Response**: Event stream
+    wscat -c ws://localhost:6433/find
+    connected (press CTRL+C to quit)
+    > {"start": 1531528038}
+    < ok
+    < event: 110 108 2
+    id:2ca00a2a-d70f-4617-b48f-a31716b1d5dc
+    timestamp: 1531528038.8951149
+    source:/dev/sensors/temp0
+    tags:sensor
+    32
+
+
+Notice that the first result is the string ``ok`` - this means that the query was successfully processed by the server.
+The next messages are the matched events. Every serialized event message always ends in a newline.
 
 
 ``/live`` - Real-time event stream
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+**Endpoint params**
+
+* **Path**: ``/live``
+* **Params**: None
+* **Message Payload**: first message body must be Criteria JSON.
+* **Response**: Event stream
 
 Opens channel to monitor for events matching a certain criteria.
 The client can open a channel to the collector to monitor for incoming events
@@ -182,7 +207,7 @@ Where:
 * ``end`` - ``int``, *optional*: match events **before** this timestamp (UNIX).
 * ``tags`` - array of ``string``, *optional*: match the events matching any of the supplied tags. The values are processed as regular expressions.
 * ``source`` - ``string`` regular expression, *optional*: match any event which ``source`` matches the provided regular expression.
-* ``context`` - ``string`` regular expression, *optional*: match the eventa with content matching to the supplied content regex.
+* ``content`` - ``string`` regular expression, *optional*: match the eventa with content matching to the supplied content regex.
 
 
 **Example**
@@ -199,13 +224,21 @@ and contain ``[ERROR]`` from the ``/var/log`` files (source):
             "source": "/var/log/.+"
         }
 
+Example using ``wscat`` (assuming the collector runs on localhost):
 
-**Endpoint params**
+.. code-block:: text
 
-* **Path**: ``/live``
-* **Params**: None
-* **Message Payload**: first message body must be Criteria JSON.
-* **Response**: Event stream
+    wscat -c ws://localhost:6433/live
+    connected (press CTRL+C to quit)
+    > {"start": 1531528038}
+    < ok
+    < event: 110 108 2
+    id:2ca00a2a-d70f-4617-b48f-a31716b1d5dc
+    timestamp: 1531528038.8951149
+    source:/dev/sensors/temp0
+    tags:sensor
+    32
+
 
 
 Simple event parser and serializer in JavaScript
