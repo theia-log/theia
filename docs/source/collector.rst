@@ -75,8 +75,8 @@ The content starts after the last header and is separated by a single newline ch
 Collector WebScoket API Endpoints
 ---------------------------------
 
-Push Event Endpoint
-^^^^^^^^^^^^^^^^^^^
+``/event`` - Push (Add) Event
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Open channel to push events.
 
@@ -86,8 +86,17 @@ Open channel to push events.
 * **Response**: None
 
 
-Find events matching criteria
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Example of sending events to the collector (using `wscat <https://github.com/websockets/wscat>`_):
+
+.. code-block:: text
+
+    wscat -c ws://localhost:6433/event
+    connected (press CTRL+C to quit)
+    > event: 110 108 2\nid:d55507cc-3530-47c1-913d-d07db6cfebea\ntimestamp: 1531528042.9037790\nsource:/dev/sensors/temp0\ntags:sensor\n32\n
+    > 
+
+``/find`` - Find events matching criteria
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Opens channel to find events that match some criteria.
 The events are pushed from the collector to the client (on the incoming port of 
@@ -139,8 +148,8 @@ and contain ``[ERROR]``:
 * **Response**: Event stream
 
 
-Real-time event stream
-^^^^^^^^^^^^^^^^^^^^^^
+``/live`` - Real-time event stream
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Opens channel to monitor for events matching a certain criteria.
 The client can open a channel to the collector to monitor for incoming events
