@@ -190,7 +190,7 @@ class RDBSEventStore(EventStore):
                         continue
 
                 event = Event(id=event_record.id,
-                              timestamp=str(event_record.timestamp),
+                              timestamp=event_record.timestamp,
                               tags=flags,
                               source=event_record.source or '',
                               content=event_record.content)
