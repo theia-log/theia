@@ -150,7 +150,7 @@ def test_run_and_stop_collector():
     from time import sleep
     from threading import Thread
     store = EventStore()
-    coll = Collector(store=store, hostname="127.0.0.1", port=1122)
+    coll = Collector(store=store, hostname="127.0.0.1", port=1123)
     
     def do_run():
         print('coll.run()')
@@ -183,7 +183,7 @@ def test_collect_events(m_save):
     
     ser = EventSerializer()
     store = EventStore()
-    coll = Collector(store=store, hostname="127.0.0.1", port=1122)
+    coll = Collector(store=store, hostname="127.0.0.1", port=1124)
     
     def do_run():
         coll.run()
@@ -241,7 +241,7 @@ def test_collect_and_filter_events(m_save, m_send):
     
     ser = EventSerializer()
     store = EventStore()
-    coll = Collector(store=store, hostname="127.0.0.1", port=1122)
+    coll = Collector(store=store, hostname="127.0.0.1", port=1125)
     
     def do_run():
         coll.run()
@@ -312,7 +312,7 @@ def test_find_events(m_search, m_send):
     m_search.side_effect = yield_events
     
     store = EventStore()
-    coll = Collector(store=store, hostname="127.0.0.1", port=1122)
+    coll = Collector(store=store, hostname="127.0.0.1", port=1126)
     
     def do_run():
         coll.run()

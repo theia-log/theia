@@ -185,12 +185,12 @@ def test_client_close_handlers():
 def test_start_server():
     loop = asyncio.new_event_loop()
 
-    ser = Server(loop=loop, host='localhost', port=11223)
+    ser = Server(loop=loop, host='localhost', port=11224)
     
     ser.start()
     
     assert ser.host == 'localhost'
-    assert ser.port == 11223
+    assert ser.port == 11224
     assert ser._started == True
     
     for t in asyncio.Task.all_tasks(loop):
@@ -202,12 +202,12 @@ def test_start_server():
 def test_start_and_stop_server():
     loop = asyncio.new_event_loop()
 
-    ser = Server(loop=loop, host='localhost', port=11223)
+    ser = Server(loop=loop, host='localhost', port=11225)
     
     ser.start()
     
     assert ser.host == 'localhost'
-    assert ser.port == 11223
+    assert ser.port == 11225
     assert ser._started == True
     
     ser.stop()
@@ -224,7 +224,7 @@ def test_start_and_stop_server():
 def test_server_on_action(m_send, m_recv):
     loop = asyncio.new_event_loop()
 
-    ser = Server(loop=loop, host='localhost', port=11223)
+    ser = Server(loop=loop, host='localhost', port=11226)
     
     serialized_event = EventSerializer().serialize(Event(id='00001',
                                                          timestamp=10,
@@ -267,7 +267,7 @@ def test_server_on_action(m_send, m_recv):
     ser.start()
     
     assert ser.host == 'localhost'
-    assert ser.port == 11223
+    assert ser.port == 11226
     assert ser._started == True
     
     asyncio.ensure_future(ser._on_client_connection( ws, '/test-path'), loop=loop)
@@ -292,7 +292,7 @@ def test_server_close_handler(m_close, m_send, m_recv):
     
     loop = asyncio.new_event_loop()
 
-    ser = Server(loop=loop, host='localhost', port=11223)
+    ser = Server(loop=loop, host='localhost', port=11227)
     ser._stop_timeout = 0.1
     
     serialized_event = EventSerializer().serialize(Event(id='00001',
@@ -331,7 +331,7 @@ def test_server_close_handler(m_close, m_send, m_recv):
     ser.start()
     
     assert ser.host == 'localhost'
-    assert ser.port == 11223
+    assert ser.port == 11227
     assert ser._started == True
     
     asyncio.ensure_future(ser._on_client_connection(websocket, 'test-path'), loop=loop)
