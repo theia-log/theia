@@ -271,11 +271,9 @@ class Collector:
                                                                   order=order,
                                                                   websocket=websocket),
                                          self.store_loop)
-        print("::scheduled _find_event: ", path, message, websocket, resp)
         return 'ok'
 
     async def _find_event_results(self, start, end, flags, match, order, websocket):
-        print("Find event results", websocket)
         for event in self.store.search(ts_start=start, ts_end=end, flags=flags,
                                        match=match, order=order):
             await self._send_result(event, websocket)
