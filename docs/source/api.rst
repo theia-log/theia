@@ -17,6 +17,8 @@ Full API docs
     :members:
 .. automodule:: theia.storeapi
     :members:
+.. automodule:: theia.rdbs
+    :members:
 .. automodule:: theia.watcher
     :members:
 .. automodule:: theia.cli.parser
