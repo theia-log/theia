@@ -113,7 +113,7 @@ class RDBSEventStore(EventStore):
         :param event_id(str): the event id.
 
         :returns: a ``theia.model.Event`` if the event was found or ```theia.storeapi.EventNotFound``` if
-        no such event can be found.
+            no such event can be found.
         """
         sess = self._session()
         try:
@@ -138,10 +138,10 @@ class RDBSEventStore(EventStore):
         :param ts_start(float): *required*, match all events that occured at or later than this time.
         :param ts_end(float): *optional*, match all events that occured before this time.
         :param flags(list): *optional*, list of string values (regular expressions) against which to match
-        the event tags. Event matches only if *all* flags are matched against the event's tags.
+            the event tags. Event matches only if *all* flags are matched against the event's tags.
         :param match(str): *optional*, match the content of an event. This is a regular expession as well.
         :param order(str): either ``asc`` or ``desc`` - sort the results ascending or descending based on the
-        event timestamp.
+            event timestamp.
 
         :returns: an iterator over all matched results.
         """
@@ -220,7 +220,7 @@ def match_any(matcher, values):
     :param values(list): list of ``str`` values to match.
 
     :returns: ``True`` if *any* of the ``str`` values matches (fullmatch) the matcher;
-    otherwise ``False``.
+        otherwise ``False``.
     """
     for val in values:
         if matcher.fullmatch(val):
@@ -237,7 +237,7 @@ def match_all(matchers, values):
     :param values(list): list of ``str`` to match
 
     :returns: ``True`` only if *all* of the matchers have matched at least one value of the provided
-    list of values.
+        list of values.
     """
     for matcher in matchers:
         if not match_any(matcher, values):
