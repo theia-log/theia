@@ -28,7 +28,7 @@ setuptools.setup(
     install_requires=[
         "picotui==0.9.1",
         "watchdog==0.8.3",
-        "websockets==3.3",
+        "websockets==9.1",
     ]
 )
 
